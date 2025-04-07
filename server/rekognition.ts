@@ -86,21 +86,20 @@ export async function analyzeImage(
  * Determines which attributes to request from Rekognition based on settings
  */
 function getAttributesArray(settings: SettingsConfig): Attribute[] {
-  const attributes: Attribute[] = ["DEFAULT"];
-  
-  if (settings.enableAgeAnalysis) {
-    attributes.push("AGE_RANGE");
-  }
-  
-  if (settings.enableGenderAnalysis) {
-    attributes.push("GENDER");
-  }
-  
-  if (settings.enableEmotionAnalysis) {
-    attributes.push("EMOTIONS");
-  }
-  
-  return attributes;
+  // Always request all available attributes for comprehensive analysis
+  return [
+    "DEFAULT",
+    "AGE_RANGE",
+    "GENDER",
+    "EMOTIONS",
+    "SMILE",
+    "EYEGLASSES",
+    "SUNGLASSES",
+    "BEARD",
+    "MUSTACHE",
+    "EYES_OPEN",
+    "MOUTH_OPEN"
+  ];
 }
 
 /**
@@ -148,6 +147,79 @@ function processDetectedFaces(
           type: emotion.Type || "UNKNOWN",
           confidence: emotion.Confidence || 0
         }));
+      }
+      
+      // Add smile detection
+      if (face.Smile) {
+        detectedFace.smile = {
+          value: face.Smile.Value || false,
+          confidence: face.Smile.Confidence || 0
+        };
+      }
+      
+      // Add eyes open detection
+      if (face.EyesOpen) {
+        detectedFace.eyesOpen = {
+          value: face.EyesOpen.Value || false,
+          confidence: face.EyesOpen.Confidence || 0
+        };
+      }
+      
+      // Add mouth open detection
+      if (face.MouthOpen) {
+        detectedFace.mouthOpen = {
+          value: face.MouthOpen.Value || false,
+          confidence: face.MouthOpen.Confidence || 0
+        };
+      }
+      
+      // Add eyeglasses detection
+      if (face.Eyeglasses) {
+        detectedFace.eyeglasses = {
+          value: face.Eyeglasses.Value || false,
+          confidence: face.Eyeglasses.Confidence || 0
+        };
+      }
+      
+      // Add sunglasses detection
+      if (face.Sunglasses) {
+        detectedFace.sunglasses = {
+          value: face.Sunglasses.Value || false,
+          confidence: face.Sunglasses.Confidence || 0
+        };
+      }
+      
+      // Add beard detection
+      if (face.Beard) {
+        detectedFace.beard = {
+          value: face.Beard.Value || false,
+          confidence: face.Beard.Confidence || 0
+        };
+      }
+      
+      // Add mustache detection
+      if (face.Mustache) {
+        detectedFace.mustache = {
+          value: face.Mustache.Value || false,
+          confidence: face.Mustache.Confidence || 0
+        };
+      }
+      
+      // Add face pose information
+      if (face.Pose) {
+        detectedFace.pose = {
+          roll: face.Pose.Roll || 0,
+          yaw: face.Pose.Yaw || 0,
+          pitch: face.Pose.Pitch || 0
+        };
+      }
+      
+      // Add face quality information
+      if (face.Quality) {
+        detectedFace.quality = {
+          brightness: face.Quality.Brightness || 0,
+          sharpness: face.Quality.Sharpness || 0
+        };
       }
       
       return detectedFace;
@@ -242,16 +314,69 @@ function calculateStatistics(faces: DetectedFace[]): Omit<AnalysisResult, "faces
     primaryEmotionPercentage = Math.round((primaryEmotionCount / peopleCount) * 100);
   }
   
-  // Calculate a simple engagement score (example: percentage of happy or surprised faces)
+  // Calculate a comprehensive engagement score using multiple facial attributes
   let engagementScore: number | undefined;
   
   if (peopleCount > 0) {
-    const engagedEmotions = ["HAPPY", "SURPRISED", "CALM"];
-    const engagedCount = engagedEmotions.reduce((count, emotion) => {
-      return count + (emotionCounts[emotion] || 0);
-    }, 0);
+    // Initialize total engagement points and maximum possible points
+    let totalEngagementPoints = 0;
+    let maxPossiblePoints = peopleCount * 4; // 4 dimensions: emotion, eyes, pose, expression
     
-    engagementScore = Math.round((engagedCount / peopleCount) * 100);
+    // Process each face for engagement metrics
+    faces.forEach(face => {
+      // 1. Emotion engagement: positive emotions indicate higher engagement
+      if (face.emotions && face.emotions.length > 0) {
+        const primaryEmotion = face.emotions.reduce((prev, current) => 
+          (current.confidence > prev.confidence) ? current : prev
+        );
+        
+        // Positive emotions score higher
+        const engagedEmotions = {
+          "HAPPY": 1.0,
+          "SURPRISED": 0.9,
+          "CALM": 0.7,
+          "CONFUSED": 0.6,
+          "FEAR": 0.5,
+          "SAD": 0.3,
+          "ANGRY": 0.2,
+          "DISGUSTED": 0.1
+        };
+        
+        const emotionScore = engagedEmotions[primaryEmotion.type as keyof typeof engagedEmotions] || 0.5;
+        totalEngagementPoints += emotionScore;
+      }
+      
+      // 2. Visual attention: eyes open indicates attention
+      if (face.eyesOpen) {
+        totalEngagementPoints += face.eyesOpen.value ? 1.0 : 0.0;
+      }
+      
+      // 3. Pose assessment: facing forward (low yaw/pitch/roll values) indicates engagement
+      if (face.pose) {
+        // Convert yaw, pitch, roll to a normalized engagement score (0-1)
+        // Lower absolute values of pose angles indicate better engagement
+        const yawFactor = Math.max(0, 1 - Math.abs(face.pose.yaw) / 45);
+        const pitchFactor = Math.max(0, 1 - Math.abs(face.pose.pitch) / 45);
+        const rollFactor = Math.max(0, 1 - Math.abs(face.pose.roll) / 45);
+        
+        // Average the pose factors
+        const poseScore = (yawFactor + pitchFactor + rollFactor) / 3;
+        totalEngagementPoints += poseScore;
+      }
+      
+      // 4. Expression intensity: smile and mouth movements indicate engagement
+      let expressionScore = 0;
+      if (face.smile && face.smile.value) {
+        expressionScore += 0.7;
+      }
+      if (face.mouthOpen && face.mouthOpen.value) {
+        expressionScore += 0.3;
+      }
+      totalEngagementPoints += expressionScore;
+    });
+    
+    // Calculate final percentage score
+    engagementScore = Math.round((totalEngagementPoints / maxPossiblePoints) * 100);
   }
   
   return {

@@ -26,13 +26,9 @@ const ageRanges = [
 ];
 
 export default function AgeDistributionChart({ capture }: AgeDistributionChartProps) {
-  // Process the raw data to get age distribution
-  // In a real app, this would come from the actual face detection results
-  
-  // For now, we'll simulate some data based on the capture
-  // In a real implementation, you would extract this from capture.rawData
+  // Process the captured face data to get age distribution
   const getAgeDistribution = () => {
-    if (!capture || !capture.faces) {
+    if (!capture || !capture.faces || capture.faces.length === 0) {
       return ageRanges.map(range => ({ name: range.label, count: 0 }));
     }
     
@@ -43,8 +39,12 @@ export default function AgeDistributionChart({ capture }: AgeDistributionChartPr
     }, {} as Record<string, number>);
     
     // Count faces in each age range
+    let totalFacesWithAge = 0;
+    
     capture.faces.forEach(face => {
       if (face.ageRange) {
+        totalFacesWithAge++;
+        // Calculate average age from the range
         const avg = (face.ageRange.low + face.ageRange.high) / 2;
         
         if (avg < 18) counts["0-17"]++;
@@ -56,6 +56,18 @@ export default function AgeDistributionChart({ capture }: AgeDistributionChartPr
         else counts["65+"]++;
       }
     });
+    
+    // For debugging
+    console.log("Age distribution data:", {
+      totalFaces: capture.faces.length,
+      totalFacesWithAge,
+      counts
+    });
+    
+    // If we have no age data, log the first face to see what's available
+    if (totalFacesWithAge === 0 && capture.faces.length > 0) {
+      console.log("Sample face data:", JSON.stringify(capture.faces[0], null, 2));
+    }
     
     // Convert to chart data format
     return ageRanges.map(range => ({

@@ -23,6 +23,43 @@ export interface DetectedFace {
     type: string;
     confidence: number;
   }>;
+  smile?: {
+    value: boolean;
+    confidence: number;
+  };
+  eyesOpen?: {
+    value: boolean;
+    confidence: number;
+  };
+  mouthOpen?: {
+    value: boolean;
+    confidence: number;
+  };
+  eyeglasses?: {
+    value: boolean;
+    confidence: number;
+  };
+  sunglasses?: {
+    value: boolean;
+    confidence: number;
+  };
+  beard?: {
+    value: boolean;
+    confidence: number;
+  };
+  mustache?: {
+    value: boolean;
+    confidence: number;
+  };
+  pose?: {
+    roll: number;
+    yaw: number;
+    pitch: number;
+  };
+  quality?: {
+    brightness: number;
+    sharpness: number;
+  };
 }
 
 export interface AnalysisResult {

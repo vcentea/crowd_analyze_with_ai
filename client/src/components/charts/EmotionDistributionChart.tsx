@@ -6,10 +6,7 @@ interface EmotionDistributionChartProps {
 }
 
 export default function EmotionDistributionChart({ capture }: EmotionDistributionChartProps) {
-  // Process capture data to get emotion distribution
-  // In a real app, this data would come from the actual face detections
-  
-  // We'll simulate this based on the capture for now
+  // Process capture data to get emotion distribution from detected faces
   const getEmotionDistribution = () => {
     if (!capture || !capture.faces || capture.faces.length === 0) {
       return [{ name: "No Data", value: 1 }];
@@ -17,6 +14,7 @@ export default function EmotionDistributionChart({ capture }: EmotionDistributio
     
     // Count emotions
     const emotionCounts: Record<string, number> = {};
+    let totalEmotions = 0;
     
     capture.faces.forEach(face => {
       if (face.emotions && face.emotions.length > 0) {
@@ -27,8 +25,14 @@ export default function EmotionDistributionChart({ capture }: EmotionDistributio
         
         const emotion = primaryEmotion.type;
         emotionCounts[emotion] = (emotionCounts[emotion] || 0) + 1;
+        totalEmotions++;
       }
     });
+    
+    // If no emotions were found, return No Data
+    if (totalEmotions === 0) {
+      return [{ name: "No Data", value: 1 }];
+    }
     
     // Convert to chart data format and sort by count
     const emotionData = Object.entries(emotionCounts)
@@ -73,7 +77,9 @@ export default function EmotionDistributionChart({ capture }: EmotionDistributio
   
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
-      const percentage = (payload[0].value / capture.faces.length * 100).toFixed(1);
+      // Calculate total faces for percentage
+      const totalFaces = capture.faces && capture.faces.length > 0 ? capture.faces.length : 1;
+      const percentage = ((payload[0].value / totalFaces) * 100).toFixed(1);
       
       return (
         <div className="bg-white p-2 border border-gray-200 shadow-md rounded">
