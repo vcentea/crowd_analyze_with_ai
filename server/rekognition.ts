@@ -3,18 +3,28 @@ import {
   DetectFacesCommand,
   FaceDetail,
   BoundingBox,
+  Attribute
 } from "@aws-sdk/client-rekognition";
 import { SettingsConfig, DetectedFace, AnalysisResult } from "@/lib/types";
 import { randomUUID } from "crypto";
 
 // Initialize the AWS Rekognition client
+const region = process.env.AWS_REGION === "Global Endpoint https://sts.amazonaws.com" 
+  ? "us-east-1" // Default region if the global endpoint is incorrectly set
+  : (process.env.AWS_REGION || "us-east-1");
+
 const rekognition = new RekognitionClient({
-  region: process.env.AWS_REGION || "us-east-1",
+  region: region,
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
   }
 });
+
+// Log AWS configuration for debugging (without exposing secrets)
+console.log(`AWS Rekognition configured with region: ${region}`);
+console.log(`Original AWS_REGION value: ${process.env.AWS_REGION || "not set"}`);
+console.log(`AWS credentials available: ${!!process.env.AWS_ACCESS_KEY_ID && !!process.env.AWS_SECRET_ACCESS_KEY}`);
 
 /**
  * Analyzes an image using Amazon Rekognition
@@ -52,6 +62,22 @@ export async function analyzeImage(
     };
   } catch (error) {
     console.error("Error analyzing image with Rekognition:", error);
+    
+    // Provide more specific error messages based on the type of error
+    if (error instanceof Error) {
+      if (error.name === 'AccessDeniedException' || error.name === 'UnrecognizedClientException') {
+        throw new Error("Authentication failed with AWS. Please check your AWS credentials.");
+      } else if (error.name === 'InvalidImageFormatException') {
+        throw new Error("The image format is not supported by Rekognition.");
+      } else if (error.name === 'ImageTooLargeException') {
+        throw new Error("The image size exceeds the limit. Please try with a smaller image.");
+      } else if (error.name === 'ResourceNotFoundException') {
+        throw new Error("The requested AWS resource could not be found.");
+      } else {
+        throw new Error(`AWS Rekognition error: ${error.message}`);
+      }
+    }
+    
     throw new Error("Failed to analyze image with facial recognition service");
   }
 }
@@ -59,8 +85,8 @@ export async function analyzeImage(
 /**
  * Determines which attributes to request from Rekognition based on settings
  */
-function getAttributesArray(settings: SettingsConfig): string[] {
-  const attributes = ["DEFAULT"];
+function getAttributesArray(settings: SettingsConfig): Attribute[] {
+  const attributes: Attribute[] = ["DEFAULT"];
   
   if (settings.enableAgeAnalysis) {
     attributes.push("AGE_RANGE");

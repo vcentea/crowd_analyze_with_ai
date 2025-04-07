@@ -1,11 +1,13 @@
 import { useRef, useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Pause, Play, Video } from "lucide-react";
+import { Pause, Play, Video, AlertTriangle, RefreshCw } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import useCamera from "@/hooks/useCamera";
 import useFrameCapture from "@/hooks/useFrameCapture";
 import { SettingsConfig } from "@/lib/types";
 import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 
 interface VideoFeedPanelProps {
   settings: SettingsConfig;
@@ -13,6 +15,9 @@ interface VideoFeedPanelProps {
 
 export default function VideoFeedPanel({ settings }: VideoFeedPanelProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [awsError, setAwsError] = useState<string | null>(null);
+  const { toast } = useToast();
+  
   const { 
     cameraState, 
     requestCameraPermission, 
@@ -25,13 +30,27 @@ export default function VideoFeedPanel({ settings }: VideoFeedPanelProps) {
     lastAnalyzedTime,
     framesAnalyzed,
     isProcessing,
-    captureFrame
+    captureFrame,
+    lastError
   } = useFrameCapture(videoRef, settings);
 
   // Format the last analyzed time
   const formattedLastAnalyzedTime = lastAnalyzedTime 
     ? format(lastAnalyzedTime, "hh:mm:ss a") 
     : "None";
+    
+  // Check for AWS-specific errors
+  useEffect(() => {
+    if (lastError) {
+      if (lastError.includes("AWS") || lastError.includes("Authentication failed")) {
+        setAwsError(lastError);
+      } else {
+        setAwsError(null);
+      }
+    } else {
+      setAwsError(null);
+    }
+  }, [lastError]);
 
   return (
     <Card className="bg-white rounded-lg shadow-md h-full">
@@ -98,6 +117,28 @@ export default function VideoFeedPanel({ settings }: VideoFeedPanelProps) {
           )}
         </div>
 
+        {/* AWS credentials alert */}
+        {awsError && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>AWS Configuration Error</AlertTitle>
+            <AlertDescription>
+              {awsError}
+              <div className="mt-2">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="mt-2"
+                  onClick={() => window.location.reload()}
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Reload page
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+        
         {/* Capture metadata */}
         <div className="mt-2 text-sm text-[#323130] font-mono">
           <div className="flex justify-between items-center">

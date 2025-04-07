@@ -12,6 +12,7 @@ export default function useFrameCapture(
   const [lastAnalyzedTime, setLastAnalyzedTime] = useState<Date | null>(null);
   const [framesAnalyzed, setFramesAnalyzed] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
   
   const captureIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -25,11 +26,18 @@ export default function useFrameCapture(
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/captures"] });
+      // Clear any previous errors on success
+      setLastError(null);
     },
     onError: (error) => {
+      const errorMessage = error.message || "Failed to analyze the image";
+      
+      // Store the error message
+      setLastError(errorMessage);
+      
       toast({
         title: "Analysis error",
-        description: error.message || "Failed to analyze the image",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -37,7 +45,12 @@ export default function useFrameCapture(
   
   // Capture a frame from the video feed
   const captureFrame = async () => {
-    if (!videoRef.current || !videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
+    if (!videoRef.current) {
+      return;
+    }
+    
+    // Check if video has enough data to capture
+    if (videoRef.current.readyState < HTMLMediaElement.HAVE_ENOUGH_DATA) {
       return;
     }
     
@@ -46,8 +59,10 @@ export default function useFrameCapture(
       
       // Create a canvas to capture the frame
       const canvas = document.createElement("canvas");
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
+      // Reduce resolution to make image smaller
+      const scaleFactor = 0.5; // 50% of original size
+      canvas.width = videoRef.current.videoWidth * scaleFactor;
+      canvas.height = videoRef.current.videoHeight * scaleFactor;
       
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
@@ -55,8 +70,8 @@ export default function useFrameCapture(
       // Draw the video frame to the canvas
       ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
       
-      // Get the image data as a base64 string
-      const imageData = canvas.toDataURL("image/jpeg", 0.8);
+      // Get the image data as a base64 string with reduced quality
+      const imageData = canvas.toDataURL("image/jpeg", 0.5);
       
       // Send the image data to the server for analysis
       await analyzeMutation.mutateAsync(imageData);
@@ -68,9 +83,16 @@ export default function useFrameCapture(
     } catch (error) {
       console.error("Error capturing frame:", error);
       
+      let errorMessage = "Failed to capture or process the frame";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        errorMessage = JSON.stringify(error);
+      }
+      
       toast({
         title: "Capture error",
-        description: "Failed to capture or process the frame",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -142,6 +164,7 @@ export default function useFrameCapture(
     lastAnalyzedTime,
     framesAnalyzed,
     isProcessing,
+    lastError,
     captureFrame
   };
 }

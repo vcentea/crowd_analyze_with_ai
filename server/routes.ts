@@ -9,7 +9,10 @@ import path from "path";
 
 // Validate image data from client
 const analyzeImageSchema = z.object({
-  imageData: z.string().startsWith("data:image/")
+  imageData: z.string()
+    .startsWith("data:image/")
+    .refine((val) => val.length > 0, "Image data cannot be empty")
+    .refine((val) => val.includes("base64"), "Image data must be base64 encoded")
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
