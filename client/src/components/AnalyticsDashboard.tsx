@@ -5,6 +5,7 @@ import AgeDistributionChart from "@/components/charts/AgeDistributionChart";
 import GenderDistributionChart from "@/components/charts/GenderDistributionChart";
 import EmotionDistributionChart from "@/components/charts/EmotionDistributionChart";
 import TimelineChart from "@/components/charts/TimelineChart";
+import EngagementTimelineChart from "@/components/charts/EngagementTimelineChart";
 import RecentCapturesTable from "@/components/RecentCapturesTable";
 import { CaptureResult } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
@@ -81,9 +82,8 @@ export default function AnalyticsDashboard({
         </Card>
       </div>
       
-      {/* Engagement & Timeline */}
+      {/* Emotion Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Emotion Distribution */}
         <Card className="bg-white rounded-lg shadow-md">
           <CardContent className="p-4">
             <h3 className="text-lg font-medium mb-4">Emotion Distribution</h3>
@@ -111,6 +111,23 @@ export default function AnalyticsDashboard({
           </CardContent>
         </Card>
       </div>
+      
+      {/* Engagement Timeline */}
+      <Card className="bg-white rounded-lg shadow-md">
+        <CardContent className="p-4">
+          <h3 className="text-lg font-medium mb-4">Engagement Score Timeline (Last 2 Minutes)</h3>
+          <p className="text-sm text-gray-500 mb-4">
+            Real-time tracking of audience engagement levels based on facial expressions, attention cues, and emotional responses.
+          </p>
+          {isLoading || captures.length < 2 ? (
+            <div className="h-[200px] flex items-center justify-center">
+              <Skeleton className="h-full w-full" />
+            </div>
+          ) : (
+            <EngagementTimelineChart captures={captures} windowMinutes={2} />
+          )}
+        </CardContent>
+      </Card>
       
       {/* Recent Captures Table */}
       <Card className="bg-white rounded-lg shadow-md">
