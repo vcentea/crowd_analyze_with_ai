@@ -1,4 +1,4 @@
-import { CaptureResult } from "@/lib/types";
+import { CaptureResult, DetectedFace } from "@/lib/types";
 import {
   BarChart,
   Bar,
@@ -28,7 +28,12 @@ const ageRanges = [
 export default function AgeDistributionChart({ capture }: AgeDistributionChartProps) {
   // Process the captured face data to get age distribution
   const getAgeDistribution = () => {
-    if (!capture || !capture.faces || capture.faces.length === 0) {
+    // Get faces from the appropriate location (directly or from rawData)
+    const facesArray = capture?.faces?.length ? capture.faces : 
+                      (capture?.rawData?.faces?.length ? capture.rawData.faces : []);
+    
+    if (facesArray.length === 0) {
+      console.log("No faces found in capture or rawData");
       return ageRanges.map(range => ({ name: range.label, count: 0 }));
     }
     
@@ -41,7 +46,7 @@ export default function AgeDistributionChart({ capture }: AgeDistributionChartPr
     // Count faces in each age range
     let totalFacesWithAge = 0;
     
-    capture.faces.forEach(face => {
+    facesArray.forEach((face: DetectedFace) => {
       if (face.ageRange) {
         totalFacesWithAge++;
         // Calculate average age from the range
@@ -57,17 +62,19 @@ export default function AgeDistributionChart({ capture }: AgeDistributionChartPr
       }
     });
     
-    // For debugging
-    console.log("Age distribution data:", {
-      totalFaces: capture.faces.length,
+    // Enhanced debugging with full capture data
+    console.log("Age distribution debugging:", {
+      totalFaces: facesArray.length,
       totalFacesWithAge,
-      counts
+      counts,
+      rawCapture: capture,
+      firstFace: facesArray.length > 0 ? facesArray[0] : null,
+      settings: {
+        enableAgeAnalysis: true, // We've hardcoded these now on the server
+        enableGenderAnalysis: true,
+        enableEmotionAnalysis: true
+      }
     });
-    
-    // If we have no age data, log the first face to see what's available
-    if (totalFacesWithAge === 0 && capture.faces.length > 0) {
-      console.log("Sample face data:", JSON.stringify(capture.faces[0], null, 2));
-    }
     
     // Convert to chart data format
     return ageRanges.map(range => ({

@@ -47,11 +47,15 @@ export default function CaptureDetailModal({
   
   // Age chart data
   const getAgeData = () => {
-    if (!capture.faces) return [];
+    // Get faces from the appropriate location (directly or from rawData)
+    const facesArray = capture?.faces?.length ? capture.faces : 
+                      (capture?.rawData?.faces?.length ? capture.rawData.faces : []);
+    
+    if (facesArray.length === 0) return [];
     
     const ageGroups: Record<string, number> = {};
     
-    capture.faces.forEach(face => {
+    facesArray.forEach((face: DetectedFace) => {
       if (face.ageRange) {
         const avg = (face.ageRange.low + face.ageRange.high) / 2;
         
@@ -68,14 +72,18 @@ export default function CaptureDetailModal({
   
   // Emotion chart data
   const getEmotionData = () => {
-    if (!capture.faces) return [];
+    // Get faces from the appropriate location (directly or from rawData)
+    const facesArray = capture?.faces?.length ? capture.faces : 
+                      (capture?.rawData?.faces?.length ? capture.rawData.faces : []);
+    
+    if (facesArray.length === 0) return [];
     
     const emotionCounts: Record<string, number> = {};
     
-    capture.faces.forEach(face => {
+    facesArray.forEach((face: DetectedFace) => {
       if (face.emotions && face.emotions.length > 0) {
         // Find the emotion with the highest confidence
-        const primaryEmotion = face.emotions.reduce((prev, current) => 
+        const primaryEmotion = face.emotions.reduce((prev: any, current: any) => 
           (current.confidence > prev.confidence) ? current : prev
         );
         
@@ -293,40 +301,46 @@ export default function CaptureDetailModal({
                       </tr>
                     </thead>
                     <tbody>
-                      {capture.faces && capture.faces.length > 0 ? (
-                        capture.faces.map((face, index) => {
-                          // Get the primary emotion
-                          const primaryEmotion = face.emotions?.length 
-                            ? face.emotions.reduce((prev, current) => 
-                                (current.confidence > prev.confidence) ? current : prev
-                              )
-                            : null;
-                              
-                          return (
-                            <tr key={face.id} className="border-b">
-                              <td className="py-1 px-2 font-mono">#{(index + 1).toString().padStart(3, '0')}</td>
-                              <td className="py-1 px-2">
-                                {face.ageRange ? `${face.ageRange.low}-${face.ageRange.high}` : 'N/A'}
-                              </td>
-                              <td className="py-1 px-2">
-                                {face.gender?.value || 'N/A'}
-                              </td>
-                              <td className="py-1 px-2">
-                                {primaryEmotion?.type || 'N/A'}
-                              </td>
-                              <td className="py-1 px-2">
-                                {face.confidence ? `${Math.round(face.confidence)}%` : 'N/A'}
-                              </td>
-                            </tr>
-                          );
-                        })
-                      ) : (
-                        <tr>
-                          <td colSpan={5} className="py-4 text-center text-gray-500">
-                            No face detection data available
-                          </td>
-                        </tr>
-                      )}
+                      {(() => {
+                        // Get faces from the appropriate location (directly or from rawData)
+                        const facesArray = capture?.faces?.length ? capture.faces : 
+                                          (capture?.rawData?.faces?.length ? capture.rawData.faces : []);
+                        
+                        return facesArray.length > 0 ? (
+                          facesArray.map((face: DetectedFace, index: number) => {
+                            // Get the primary emotion
+                            const primaryEmotion = face.emotions?.length 
+                              ? face.emotions.reduce((prev: any, current: any) => 
+                                  (current.confidence > prev.confidence) ? current : prev
+                                )
+                              : null;
+                                
+                            return (
+                              <tr key={face.id} className="border-b">
+                                <td className="py-1 px-2 font-mono">#{(index + 1).toString().padStart(3, '0')}</td>
+                                <td className="py-1 px-2">
+                                  {face.ageRange ? `${face.ageRange.low}-${face.ageRange.high}` : 'N/A'}
+                                </td>
+                                <td className="py-1 px-2">
+                                  {face.gender?.value || 'N/A'}
+                                </td>
+                                <td className="py-1 px-2">
+                                  {primaryEmotion?.type || 'N/A'}
+                                </td>
+                                <td className="py-1 px-2">
+                                  {face.confidence ? `${Math.round(face.confidence)}%` : 'N/A'}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          <tr>
+                            <td colSpan={5} className="py-4 text-center text-gray-500">
+                              No face detection data available
+                            </td>
+                          </tr>
+                        );
+                      })()}
                     </tbody>
                   </table>
                 </div>
@@ -358,21 +372,27 @@ export default function CaptureDetailModal({
               View detailed attributes for each detected face, including emotions, facial features, and engagement metrics.
             </p>
             
-            {capture.faces && capture.faces.length > 0 ? (
-              <div className="space-y-4">
-                {capture.faces.map((face, index) => (
-                  <FaceAttributesPanel 
-                    key={face.id} 
-                    face={face} 
-                    faceIndex={index} 
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="py-12 text-center text-gray-500">
-                No face detection data available
-              </div>
-            )}
+            {(() => {
+              // Get faces from the appropriate location (directly or from rawData)
+              const facesArray = capture?.faces?.length ? capture.faces : 
+                                (capture?.rawData?.faces?.length ? capture.rawData.faces : []);
+              
+              return facesArray.length > 0 ? (
+                <div className="space-y-4">
+                  {facesArray.map((face: DetectedFace, index: number) => (
+                    <FaceAttributesPanel 
+                      key={face.id} 
+                      face={face} 
+                      faceIndex={index} 
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="py-12 text-center text-gray-500">
+                  No face detection data available
+                </div>
+              );
+            })()}
           </TabsContent>
         </Tabs>
       </DialogContent>

@@ -1,4 +1,4 @@
-import { CaptureResult } from "@/lib/types";
+import { CaptureResult, DetectedFace } from "@/lib/types";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 
 interface EmotionDistributionChartProps {
@@ -8,7 +8,12 @@ interface EmotionDistributionChartProps {
 export default function EmotionDistributionChart({ capture }: EmotionDistributionChartProps) {
   // Process capture data to get emotion distribution from detected faces
   const getEmotionDistribution = () => {
-    if (!capture || !capture.faces || capture.faces.length === 0) {
+    // Get faces from the appropriate location (directly or from rawData)
+    const facesArray = capture?.faces?.length ? capture.faces : 
+                      (capture?.rawData?.faces?.length ? capture.rawData.faces : []);
+    
+    if (facesArray.length === 0) {
+      console.log("EmotionDistribution: No faces detected in capture or rawData", capture);
       return [{ name: "No Data", value: 1 }];
     }
     
@@ -16,21 +21,35 @@ export default function EmotionDistributionChart({ capture }: EmotionDistributio
     const emotionCounts: Record<string, number> = {};
     let totalEmotions = 0;
     
-    capture.faces.forEach(face => {
+    // Enhanced debugging - show all faces
+    console.log("EmotionDistribution debugging:", {
+      totalFaces: facesArray.length,
+      rawCapture: capture,
+      firstFace: facesArray.length > 0 ? facesArray[0] : null,
+      allFaces: facesArray
+    });
+    
+    facesArray.forEach((face: DetectedFace) => {
       if (face.emotions && face.emotions.length > 0) {
         // Find the emotion with the highest confidence
-        const primaryEmotion = face.emotions.reduce((prev, current) => 
+        const primaryEmotion = face.emotions.reduce((prev: any, current: any) => 
           (current.confidence > prev.confidence) ? current : prev
         );
         
         const emotion = primaryEmotion.type;
         emotionCounts[emotion] = (emotionCounts[emotion] || 0) + 1;
         totalEmotions++;
+      } else {
+        console.log("Face missing emotions data:", face);
       }
     });
     
+    // Log emotion counts for debugging
+    console.log("Emotion counts:", { emotionCounts, totalEmotions });
+    
     // If no emotions were found, return No Data
     if (totalEmotions === 0) {
+      console.log("No emotions detected in any faces");
       return [{ name: "No Data", value: 1 }];
     }
     
@@ -77,8 +96,12 @@ export default function EmotionDistributionChart({ capture }: EmotionDistributio
   
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
+      // Get faces from the appropriate location (directly or from rawData)
+      const facesArray = capture?.faces?.length ? capture.faces : 
+                        (capture?.rawData?.faces?.length ? capture.rawData.faces : []);
+      
       // Calculate total faces for percentage
-      const totalFaces = capture.faces && capture.faces.length > 0 ? capture.faces.length : 1;
+      const totalFaces = facesArray.length > 0 ? facesArray.length : 1;
       const percentage = ((payload[0].value / totalFaces) * 100).toFixed(1);
       
       return (
