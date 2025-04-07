@@ -125,24 +125,25 @@ function processDetectedFaces(
         confidence: face.Confidence || 0,
       };
       
-      // Add age range if enabled and available
-      if (settings.enableAgeAnalysis && face.AgeRange) {
+      // Always include all attributes from AWS regardless of settings
+      // Age range
+      if (face.AgeRange) {
         detectedFace.ageRange = {
           low: face.AgeRange.Low || 0,
           high: face.AgeRange.High || 0
         };
       }
       
-      // Add gender if enabled and available
-      if (settings.enableGenderAnalysis && face.Gender) {
+      // Gender
+      if (face.Gender) {
         detectedFace.gender = {
           value: face.Gender.Value || "Unknown",
           confidence: face.Gender.Confidence || 0
         };
       }
       
-      // Add emotions if enabled and available
-      if (settings.enableEmotionAnalysis && face.Emotions && face.Emotions.length > 0) {
+      // Emotions
+      if (face.Emotions && face.Emotions.length > 0) {
         detectedFace.emotions = face.Emotions.map(emotion => ({
           type: emotion.Type || "UNKNOWN",
           confidence: emotion.Confidence || 0
