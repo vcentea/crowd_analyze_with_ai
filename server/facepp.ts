@@ -118,41 +118,56 @@ export async function analyzeImage(
       throw new Error('Face++ API credentials not found. Please set FACEPP_API_KEY and FACEPP_API_SECRET environment variables.');
     }
 
-    // Prepare form data for Face++ API
+    console.log('Analyzing image with Face++ API...');
+    
+    // Prepare enhanced form data for Face++ API
     const formData = new FormData();
     formData.append('api_key', apiKey);
     formData.append('api_secret', apiSecret);
     formData.append('image_base64', imageBuffer.toString('base64'));
     
-    // Build return_attributes string based on settings
+    // Build comprehensive return_attributes string based on settings
     const returnAttributes = getAttributesArray(settings);
     formData.append('return_attributes', returnAttributes.join(','));
     
     // Set confidence threshold
     formData.append('threshold', settings.confidenceThreshold / 100);
+    
+    // Request higher precision for better analysis
+    formData.append('calculation_count', 100); // More precise calculations
+    formData.append('return_face_id', 1); // Return face IDs for potential tracking
+    
+    console.log(`Requesting Face++ analysis with attributes: ${returnAttributes.join(', ')}`);
+    console.log(`Using confidence threshold: ${settings.confidenceThreshold}%`);
 
-    // Call Face++ API
+    // Call Face++ API with more detailed options
     const response = await axios.post<FacePlusPlusResponse>(FACEPP_API_URL, formData, {
       headers: formData.getHeaders(),
+      timeout: 10000, // 10-second timeout for better handling of large images
     });
 
-    // Process detected faces
+    console.log(`Face++ API detected ${response.data.faces.length} faces`);
+    
+    // Process all detected faces thoroughly
     const detectedFaces = processDetectedFaces(response.data.faces, settings);
     
-    // Calculate statistics
+    // Calculate comprehensive statistics
     const stats = calculateStatistics(detectedFaces);
 
     // Store raw response separately to avoid type errors
     const rawResponse = response.data;
+    
+    console.log(`Processing complete: ${detectedFaces.length} faces analyzed`);
+    console.log(`Engagement score: ${stats.engagementScore}, Attention time: ${stats.attentionTime}s`);
 
-    // Combine results
+    // Combine results with enhanced data
     const result: AnalysisResult = {
       faces: detectedFaces,
       timestamp: new Date(),
       ...stats
     };
     
-    // Add raw data outside of the typed structure
+    // Add raw data outside of the typed structure for debugging and future analysis
     const resultWithRawData = {
       ...result,
       rawData: rawResponse
@@ -379,55 +394,133 @@ function calculateStatistics(faces: DetectedFace[]): Omit<AnalysisResult, "faces
     ? Math.round((primaryEmotionCount / faces.length) * 100)
     : 0;
   
-  // Calculate engagement score (0-100)
+  // Calculate engagement score (0-100) - Enhanced for Face++ API
   let engagementScore = 0;
+  let attentionTime = 0; // Time in seconds estimated for attention
   
   if (faces.length > 0) {
-    // Base factors for engagement calculation
+    // Base factors for engagement calculation - Enhanced with more facial attributes
     const faceFactors = faces.map(face => {
-      let faceScore = 50; // Start with a baseline
+      let faceScore = 40; // Start with a lower baseline to allow more range
       
-      // Eyes open increases engagement
+      // Eyes open is a strong indicator of attention and engagement
       if (face.eyesOpen?.value) {
-        faceScore += 10;
+        const eyeOpenConfidence = face.eyesOpen.confidence / 100;
+        faceScore += 15 * eyeOpenConfidence;
+      } else {
+        faceScore -= 20; // Significant penalty for closed eyes (not looking)
       }
       
-      // Smiling indicates engagement
+      // Smiling indicates positive engagement
       if (face.smile?.value) {
-        faceScore += 10;
+        const smileConfidence = face.smile.confidence / 100;
+        faceScore += 12 * smileConfidence;
+      }
+      
+      // Mouth open might indicate speaking or reacting
+      if (face.mouthOpen?.value) {
+        const mouthOpenConfidence = face.mouthOpen.confidence / 100;
+        faceScore += 5 * mouthOpenConfidence; // Small bonus
+      }
+      
+      // Glasses don't significantly impact engagement but might affect eye detection
+      if (face.eyeglasses?.value || face.sunglasses?.value) {
+        // No significant impact
       }
       
       // Directly facing the camera (neutral pose) indicates engagement
       if (face.pose) {
-        // Lower scores for extreme head poses
-        const poseDeviation = Math.abs(face.pose.yaw) + Math.abs(face.pose.pitch);
-        if (poseDeviation < 15) {
-          faceScore += 10;
-        } else if (poseDeviation > 45) {
-          faceScore -= 10;
+        // More precise pose scoring - both yaw (left-right) and pitch (up-down) matter
+        const yawDeviation = Math.abs(face.pose.yaw);
+        const pitchDeviation = Math.abs(face.pose.pitch);
+        const rollDeviation = Math.abs(face.pose.roll);
+        
+        // Yaw is important - looking directly at camera
+        if (yawDeviation < 10) {
+          faceScore += 15; // Looking directly at camera
+        } else if (yawDeviation < 25) {
+          faceScore += 8; // Somewhat facing camera
+        } else if (yawDeviation > 45) {
+          faceScore -= 15; // Looking away significantly
+        }
+        
+        // Pitch affects visibility of face
+        if (pitchDeviation < 15) {
+          faceScore += 5; // Good vertical angle
+        } else if (pitchDeviation > 30) {
+          faceScore -= 10; // Looking too far up or down
+        }
+        
+        // Roll (tilting head) doesn't affect engagement as much but impacts analysis
+        if (rollDeviation > 30) {
+          faceScore -= 5; // Head tilted significantly
         }
       }
       
-      // Certain emotions indicate higher engagement
+      // Emotions analysis - enhanced with confidence weighting
       if (face.emotions && face.emotions.length > 0) {
+        // Get the primary emotion
         const primaryEmotion = face.emotions.reduce((prev, current) => 
           (current.confidence > prev.confidence) ? current : prev
         );
         
-        if (['HAPPY', 'SURPRISED'].includes(primaryEmotion.type)) {
-          faceScore += 15;
+        // Get secondary emotion if there's a significant one
+        const sortedEmotions = [...face.emotions].sort((a, b) => b.confidence - a.confidence);
+        const secondaryEmotion = sortedEmotions[1]?.confidence > 15 ? sortedEmotions[1] : null;
+        
+        // Different emotions impact engagement differently
+        const primaryConfidenceWeight = primaryEmotion.confidence / 100;
+        
+        if (['HAPPY'].includes(primaryEmotion.type)) {
+          // Happy indicates high engagement
+          faceScore += 20 * primaryConfidenceWeight;
+        } else if (['SURPRISED'].includes(primaryEmotion.type)) {
+          // Surprise indicates active attention
+          faceScore += 15 * primaryConfidenceWeight;
         } else if (['CALM', 'NEUTRAL'].includes(primaryEmotion.type)) {
-          faceScore += 5;
+          // Calm/neutral indicates passive attention
+          faceScore += 10 * primaryConfidenceWeight;
+        } else if (['SAD'].includes(primaryEmotion.type)) {
+          // Sad could indicate emotional engagement but negative
+          faceScore += 5 * primaryConfidenceWeight;
         } else if (['ANGRY', 'DISGUSTED', 'FEAR'].includes(primaryEmotion.type)) {
-          faceScore -= 5;
+          // Negative emotions may indicate disengagement or negative reaction
+          faceScore -= 10 * primaryConfidenceWeight;
+        }
+        
+        // If there's a secondary emotion, factor it in
+        if (secondaryEmotion) {
+          const secondaryConfidenceWeight = secondaryEmotion.confidence / 100;
+          
+          if (['HAPPY', 'SURPRISED'].includes(secondaryEmotion.type)) {
+            faceScore += 5 * secondaryConfidenceWeight;
+          } else if (['ANGRY', 'DISGUSTED', 'FEAR'].includes(secondaryEmotion.type)) {
+            faceScore -= 5 * secondaryConfidenceWeight;
+          }
         }
       }
       
-      return Math.max(0, Math.min(100, faceScore));
+      // Calculate an estimated attention time in seconds based on engagement
+      // Higher engagement = longer attention time
+      const normalizedScore = Math.max(0, Math.min(100, faceScore));
+      
+      // Return the engagement score for this face
+      return {
+        score: normalizedScore,
+        estimatedAttention: normalizedScore > 70 ? 5 : // High attention: ~5 seconds
+                           normalizedScore > 50 ? 3 : // Medium attention: ~3 seconds
+                           normalizedScore > 30 ? 1 : // Low attention: ~1 second
+                           0 // No meaningful attention
+      };
     });
     
     // Average engagement across all faces
-    engagementScore = Math.round(faceFactors.reduce((sum, score) => sum + score, 0) / faces.length);
+    const totalScore = faceFactors.reduce((sum, factor) => sum + factor.score, 0);
+    engagementScore = Math.round(totalScore / faces.length);
+    
+    // Average attention time across all faces
+    const totalAttention = faceFactors.reduce((sum, factor) => sum + factor.estimatedAttention, 0);
+    attentionTime = Math.round((totalAttention / faces.length) * 10) / 10; // Round to 1 decimal
   }
   
   return {
@@ -437,6 +530,7 @@ function calculateStatistics(faces: DetectedFace[]): Omit<AnalysisResult, "faces
     femalePercentage,
     primaryEmotion,
     primaryEmotionPercentage,
-    engagementScore
+    engagementScore,
+    attentionTime
   };
 }

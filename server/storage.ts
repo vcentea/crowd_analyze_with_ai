@@ -79,25 +79,45 @@ export class MemStorage implements IStorage {
   // Capture methods
   async createCapture(insertCapture: InsertCapture): Promise<Capture> {
     const id = this.captureIdCounter++;
-    const capture: Capture = { ...insertCapture, id };
+    
+    // Ensure timestamp is a Date object
+    const timestamp = insertCapture.timestamp instanceof Date 
+      ? insertCapture.timestamp 
+      : new Date();
+    
+    // Create the capture with required fields
+    const capture: Capture = { 
+      id,
+      timestamp,
+      peopleCount: insertCapture.peopleCount,
+      averageAge: insertCapture.averageAge ?? null,
+      malePercentage: insertCapture.malePercentage ?? null,
+      femalePercentage: insertCapture.femalePercentage ?? null,
+      primaryEmotion: insertCapture.primaryEmotion ?? null,
+      primaryEmotionPercentage: insertCapture.primaryEmotionPercentage ?? null,
+      engagementScore: insertCapture.engagementScore ?? null,
+      attentionTime: insertCapture.attentionTime ?? null,
+      rawData: insertCapture.rawData ?? null
+    };
+    
     this.capturesMap.set(id, capture);
     
     // Create detected people records if provided
-    if (capture.rawData && capture.rawData.faces) {
+    if (capture.rawData && typeof capture.rawData === 'object' && 'faces' in capture.rawData && Array.isArray(capture.rawData.faces)) {
       for (const face of capture.rawData.faces) {
         await this.createDetectedPerson({
           captureId: id,
           ageRange: face.ageRange 
             ? `${face.ageRange.low}-${face.ageRange.high}` 
-            : undefined,
-          gender: face.gender?.value,
+            : null,
+          gender: face.gender?.value ?? null,
           emotion: face.emotions?.length 
-            ? face.emotions.reduce((prev, current) => 
-                current.confidence > prev.confidence ? current : prev
+            ? face.emotions.reduce((prevEmotion: any, currentEmotion: any) => 
+                currentEmotion.confidence > prevEmotion.confidence ? currentEmotion : prevEmotion
               ).type 
-            : undefined,
-          confidence: face.confidence ? Math.round(face.confidence) : undefined,
-          boundingBox: face.boundingBox,
+            : null,
+          confidence: face.confidence ? Math.round(face.confidence) : null,
+          boundingBox: face.boundingBox ?? null,
         });
       }
     }
@@ -127,7 +147,16 @@ export class MemStorage implements IStorage {
   // Detected person methods
   async createDetectedPerson(insertPerson: InsertDetectedPerson): Promise<DetectedPerson> {
     const id = this.personIdCounter++;
-    const person: DetectedPerson = { ...insertPerson, id };
+    // Create person with required fields
+    const person: DetectedPerson = { 
+      id,
+      captureId: insertPerson.captureId,
+      ageRange: insertPerson.ageRange ?? null,
+      gender: insertPerson.gender ?? null,
+      emotion: insertPerson.emotion ?? null,
+      confidence: insertPerson.confidence ?? null,
+      boundingBox: insertPerson.boundingBox ?? null
+    };
     this.detectedPeopleMap.set(id, person);
     return person;
   }

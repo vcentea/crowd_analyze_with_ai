@@ -327,8 +327,8 @@ function calculateStatistics(faces: DetectedFace[]): Omit<AnalysisResult, "faces
     faces.forEach(face => {
       // 1. Emotion engagement: positive emotions indicate higher engagement
       if (face.emotions && face.emotions.length > 0) {
-        const primaryEmotion = face.emotions.reduce((prev, current) => 
-          (current.confidence > prev.confidence) ? current : prev
+        const primaryEmotion = face.emotions.reduce((prevEmo, currentEmo) => 
+          (currentEmo.confidence > prevEmo.confidence) ? currentEmo : prevEmo
         );
         
         // Positive emotions score higher
@@ -378,8 +378,57 @@ function calculateStatistics(faces: DetectedFace[]): Omit<AnalysisResult, "faces
     
     // Calculate final percentage score
     engagementScore = Math.round((totalEngagementPoints / maxPossiblePoints) * 100);
+    
+    // Calculate attention time based on engagement score
+    let attentionTime = 0;
+    
+    // Calculate estimated attention time for each face based on engagement factors
+    const faceAttentionTimes: number[] = faces.map(face => {
+      let attentionScore = 0;
+      
+      // Eyes open is critical for attention
+      if (face.eyesOpen?.value) {
+        attentionScore += 2.0;
+      }
+      
+      // Emotional engagement affects attention duration
+      if (face.emotions && face.emotions.length > 0) {
+        const primaryEmotion = face.emotions.reduce((prevEmotion, currentEmotion) => 
+          (currentEmotion.confidence > prevEmotion.confidence) ? currentEmotion : prevEmotion
+        );
+        
+        // Weight by emotion type and confidence
+        const emotionWeight = primaryEmotion.confidence / 100;
+        
+        if (['HAPPY', 'SURPRISED'].includes(primaryEmotion.type)) {
+          attentionScore += 1.5 * emotionWeight;
+        } else if (['CALM'].includes(primaryEmotion.type)) {
+          attentionScore += 1.0 * emotionWeight;
+        }
+      }
+      
+      // Facing camera increases attention
+      if (face.pose) {
+        const yawFactor = Math.max(0, 1 - Math.abs(face.pose.yaw) / 45);
+        attentionScore += yawFactor * 1.5;
+      }
+      
+      // Map score to seconds (0-5 range)
+      const normalizedScore = Math.max(0, Math.min(5, attentionScore));
+      
+      return normalizedScore;
+    });
+    
+    // Calculate average attention time (if any faces detected)
+    if (faceAttentionTimes.length > 0) {
+      const totalAttention = faceAttentionTimes.reduce((sum, time) => sum + time, 0);
+      attentionTime = Math.round((totalAttention / faceAttentionTimes.length) * 10) / 10; // Round to 1 decimal
+    }
+    
+    console.log(`AWS Rekognition: Engagement score ${engagementScore}%, Attention time ${attentionTime}s`);
   }
   
+  // Return the statistics object
   return {
     peopleCount,
     averageAge,
@@ -387,6 +436,7 @@ function calculateStatistics(faces: DetectedFace[]): Omit<AnalysisResult, "faces
     femalePercentage,
     primaryEmotion,
     primaryEmotionPercentage,
-    engagementScore
+    engagementScore,
+    attentionTime: attentionTime || null
   };
 }

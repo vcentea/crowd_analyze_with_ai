@@ -178,6 +178,10 @@ export default function CaptureDetailModal({
                     <span className="text-gray-500">Engagement score:</span>
                     <span>{capture.engagementScore ? `${capture.engagementScore}%` : 'N/A'}</span>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Attention time:</span>
+                    <span>{capture.attentionTime ? `${capture.attentionTime.toFixed(1)}s` : 'N/A'}</span>
+                  </div>
                 </div>
                 
                 <h3 className="text-lg font-medium mb-3 mt-6">Demographics Summary</h3>

@@ -71,6 +71,7 @@ export interface AnalysisResult {
   primaryEmotion?: string;
   primaryEmotionPercentage?: number;
   engagementScore?: number;
+  attentionTime?: number; // Average attention time in seconds
   timestamp: Date;
   rawData?: any; // Added to support storing API raw responses
 }
