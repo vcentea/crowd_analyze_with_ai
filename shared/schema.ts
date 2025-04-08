@@ -47,6 +47,7 @@ export const settings = pgTable("settings", {
   enableGenderAnalysis: boolean("enable_gender_analysis").notNull().default(true),
   enableEmotionAnalysis: boolean("enable_emotion_analysis").notNull().default(true),
   autoCapture: boolean("auto_capture").notNull().default(true),
+  apiProvider: text("api_provider").notNull().default("aws"),
 });
 
 export const insertSettingsSchema = createInsertSchema(settings).omit({

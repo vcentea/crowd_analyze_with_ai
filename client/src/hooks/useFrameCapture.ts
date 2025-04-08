@@ -59,19 +59,18 @@ export default function useFrameCapture(
       
       // Create a canvas to capture the frame
       const canvas = document.createElement("canvas");
-      // Reduce resolution to make image smaller
-      const scaleFactor = 0.5; // 50% of original size
-      canvas.width = videoRef.current.videoWidth * scaleFactor;
-      canvas.height = videoRef.current.videoHeight * scaleFactor;
+      // Use full resolution as requested
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
       
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
       
-      // Draw the video frame to the canvas
+      // Draw the video frame to the canvas at full resolution
       ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
       
-      // Get the image data as a base64 string with reduced quality
-      const imageData = canvas.toDataURL("image/jpeg", 0.5);
+      // Get the image data as a base64 string with high quality
+      const imageData = canvas.toDataURL("image/jpeg", 0.95);
       
       // Send the image data to the server for analysis
       await analyzeMutation.mutateAsync(imageData);

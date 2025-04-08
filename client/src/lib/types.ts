@@ -72,11 +72,11 @@ export interface AnalysisResult {
   primaryEmotionPercentage?: number;
   engagementScore?: number;
   timestamp: Date;
+  rawData?: any; // Added to support storing API raw responses
 }
 
 export interface CaptureResult extends AnalysisResult {
   id: number;
-  rawData?: any;
 }
 
 export interface AgeDistribution {
@@ -101,6 +101,8 @@ export interface TimelineDataPoint {
   count: number;
 }
 
+export type ApiProvider = 'aws' | 'facepp';
+
 export interface SettingsConfig {
   frameInterval: number;
   confidenceThreshold: number;
@@ -108,6 +110,7 @@ export interface SettingsConfig {
   enableGenderAnalysis: boolean;
   enableEmotionAnalysis: boolean;
   autoCapture: boolean;
+  apiProvider: ApiProvider;
 }
 
 export interface CameraState {

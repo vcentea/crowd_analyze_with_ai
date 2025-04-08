@@ -48,7 +48,7 @@ export default function SettingsPanel({ settings, onClose }: SettingsPanelProps)
 
   const handleSettingChange = (
     key: keyof SettingsConfig, 
-    value: number | boolean
+    value: number | boolean | string
   ) => {
     setLocalSettings((prev) => ({
       ...prev,
@@ -147,6 +147,52 @@ export default function SettingsPanel({ settings, onClose }: SettingsPanelProps)
                   checked={localSettings.autoCapture}
                   onCheckedChange={(checked) => handleSettingChange("autoCapture", checked)}
                 />
+              </div>
+            </div>
+            
+            {/* API Provider Settings */}
+            <div className="mb-4">
+              <h3 className="font-medium mb-2">API Provider</h3>
+              <div className="p-3 border rounded-md mb-3">
+                <div className="flex flex-col mb-3">
+                  <div className="flex items-center space-x-3 mb-1">
+                    <input 
+                      type="radio" 
+                      id="aws-provider" 
+                      name="api-provider" 
+                      value="aws"
+                      checked={localSettings.apiProvider === 'aws'}
+                      onChange={() => handleSettingChange("apiProvider", 'aws')}
+                      className="h-4 w-4 text-primary"
+                    />
+                    <Label htmlFor="aws-provider" className="cursor-pointer font-medium">
+                      Amazon Rekognition
+                    </Label>
+                  </div>
+                  <div className="ml-7 text-xs text-gray-500">
+                    Requires AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION in environment
+                  </div>
+                </div>
+                
+                <div className="flex flex-col">
+                  <div className="flex items-center space-x-3 mb-1">
+                    <input 
+                      type="radio" 
+                      id="facepp-provider" 
+                      name="api-provider" 
+                      value="facepp"
+                      checked={localSettings.apiProvider === 'facepp'}
+                      onChange={() => handleSettingChange("apiProvider", 'facepp')}
+                      className="h-4 w-4 text-primary"
+                    />
+                    <Label htmlFor="facepp-provider" className="cursor-pointer font-medium">
+                      Face++ API
+                    </Label>
+                  </div>
+                  <div className="ml-7 text-xs text-gray-500">
+                    Requires FACEPP_API_KEY, FACEPP_API_SECRET in environment
+                  </div>
+                </div>
               </div>
             </div>
             

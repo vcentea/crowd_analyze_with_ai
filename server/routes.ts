@@ -1,9 +1,11 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { analyzeImage } from "./rekognition";
+import { analyzeImage as analyzeImageWithAWS } from "./rekognition";
+import { analyzeImage as analyzeImageWithFacePP } from "./facepp";
 import { insertCaptureSchema, insertSettingsSchema } from "@shared/schema";
 import { z } from "zod";
+import { ApiProvider } from "../client/src/lib/types";
 import fs from "fs";
 import path from "path";
 
@@ -55,11 +57,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get current settings
       const settings = await storage.getSettings();
       
-      // Analyze the image using Rekognition
-      const analysisResult = await analyzeImage(
-        Buffer.from(base64Data, 'base64'), 
-        settings
-      );
+      // Choose API provider based on settings
+      const imageBuffer = Buffer.from(base64Data, 'base64');
+      
+      let analysisResult;
+      if (settings.apiProvider === 'facepp') {
+        // Use Face++ API
+        analysisResult = await analyzeImageWithFacePP(imageBuffer, settings);
+      } else {
+        // Default to AWS Rekognition
+        analysisResult = await analyzeImageWithAWS(imageBuffer, settings);
+      }
       
       // Save the results to storage
       const capture = {

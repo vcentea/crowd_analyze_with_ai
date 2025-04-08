@@ -70,6 +70,7 @@ export class MemStorage implements IStorage {
         enableGenderAnalysis: true,
         enableEmotionAnalysis: true,
         autoCapture: true,
+        apiProvider: "aws" as const, // Default to AWS Rekognition, using 'as const' to fix type issue
       };
     }
     return this.settingsData;

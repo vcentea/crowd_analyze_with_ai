@@ -31,6 +31,7 @@ export default function Home() {
     enableGenderAnalysis: true,
     enableEmotionAnalysis: true,
     autoCapture: true,
+    apiProvider: 'aws', // Default to AWS Rekognition
   };
 
   // Use fetched settings or default
