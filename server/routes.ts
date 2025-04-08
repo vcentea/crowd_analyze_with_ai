@@ -60,13 +60,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Choose API provider based on settings
       const imageBuffer = Buffer.from(base64Data, 'base64');
       
+      // Convert settings to the expected SettingsConfig type
+      const apiSettings = {
+        ...settings,
+        apiProvider: settings.apiProvider as ApiProvider
+      };
+      
       let analysisResult;
-      if (settings.apiProvider === 'facepp') {
+      if (apiSettings.apiProvider === 'facepp') {
         // Use Face++ API
-        analysisResult = await analyzeImageWithFacePP(imageBuffer, settings);
+        analysisResult = await analyzeImageWithFacePP(imageBuffer, apiSettings);
       } else {
         // Default to AWS Rekognition
-        analysisResult = await analyzeImageWithAWS(imageBuffer, settings);
+        analysisResult = await analyzeImageWithAWS(imageBuffer, apiSettings);
       }
       
       // Save the results to storage

@@ -109,7 +109,7 @@ export default function Home() {
             Crowd Analytics Dashboard v1.0
           </div>
           <div>
-            <span className="mr-4">Using: Amazon Rekognition</span>
+            <span className="mr-4">Using: {currentSettings.apiProvider === 'aws' ? 'Amazon Rekognition' : 'Face++ API'}</span>
             <span>Status: <span className="text-[#28A745]">Online</span></span>
           </div>
         </div>

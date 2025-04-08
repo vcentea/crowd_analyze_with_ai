@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { 
   ChevronUp, 
   Download, 
-  RefreshCw 
+  RefreshCw, 
+  X
 } from "lucide-react";
 import { SettingsConfig } from "@/lib/types";
 import { useMutation } from "@tanstack/react-query";
@@ -110,14 +111,24 @@ export default function SettingsPanel({ settings, onClose }: SettingsPanelProps)
       <CardContent className="p-4">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-medium">Settings</h2>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => setCollapsed(!collapsed)}
-            className="text-[#323130] hover:text-primary p-1"
-          >
-            <ChevronUp className={`h-5 w-5 ${collapsed ? 'rotate-180' : ''}`} />
-          </Button>
+          <div className="flex">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setCollapsed(!collapsed)}
+              className="text-[#323130] hover:text-primary p-1 mr-1"
+            >
+              <ChevronUp className={`h-5 w-5 ${collapsed ? 'rotate-180' : ''}`} />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={onClose}
+              className="text-[#323130] hover:text-primary p-1"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
         
         {!collapsed && (
@@ -244,7 +255,7 @@ export default function SettingsPanel({ settings, onClose }: SettingsPanelProps)
             </div>
             
             {/* Data Management */}
-            <div>
+            <div className="mb-5">
               <h3 className="font-medium mb-2">Data Management</h3>
               <div className="grid grid-cols-2 gap-2">
                 <Button 
@@ -262,6 +273,16 @@ export default function SettingsPanel({ settings, onClose }: SettingsPanelProps)
                   <RefreshCw className="mr-1 h-4 w-4" /> Reset Data
                 </Button>
               </div>
+            </div>
+            
+            {/* Close Button */}
+            <div className="flex justify-end">
+              <Button
+                onClick={onClose}
+                className="bg-primary hover:bg-primary-dark text-white"
+              >
+                Close Settings
+              </Button>
             </div>
           </div>
         )}
