@@ -79,42 +79,47 @@ export default function VideoFeedPanel({ settings }: VideoFeedPanelProps) {
           </div>
         </div>
 
-        <div className="relative bg-black rounded-md overflow-hidden flex items-center justify-center mb-4" style={{ aspectRatio: '16/9', width: '100%' }}>
-          <video 
-            ref={videoRef} 
-            className="w-full h-full object-contain" 
-            autoPlay 
-            muted 
-            playsInline
-          />
-
-          {/* Camera permission overlay */}
-          {!cameraState.isEnabled && (
-            <div className="absolute inset-0 bg-[#323130] bg-opacity-90 flex flex-col items-center justify-center p-6 text-white">
-              <Video className="h-12 w-12 mb-4" />
-              <h3 className="text-xl font-medium mb-2">Camera Access Required</h3>
-              <p className="text-center mb-4">This application needs camera access to analyze crowd demographics.</p>
-              <Button 
-                onClick={requestCameraPermission} 
-                className="bg-primary hover:bg-primary-dark text-white px-6 py-2"
-              >
-                Enable Camera
-              </Button>
-              {cameraState.error && (
-                <p className="mt-3 text-[#DC3545] text-sm">{cameraState.error}</p>
-              )}
+        <div className="flex flex-col items-center mb-4">
+          <div className="relative bg-black rounded-md overflow-hidden flex items-center justify-center" style={{ aspectRatio: '16/9', width: '70%' }}>
+            <video 
+              ref={videoRef} 
+              className="w-full h-full object-contain" 
+              autoPlay 
+              muted 
+              playsInline
+            />
+            <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+              Preview (Full resolution used for analysis)
             </div>
-          )}
 
-          {/* Processing overlay */}
-          {isProcessing && (
-            <div className="absolute inset-0 bg-[#323130] bg-opacity-70 flex items-center justify-center">
-              <div className="text-white text-center">
-                <div className="animate-spin mb-2 h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
-                <p>Processing frame...</p>
+            {/* Camera permission overlay */}
+            {!cameraState.isEnabled && (
+              <div className="absolute inset-0 bg-[#323130] bg-opacity-90 flex flex-col items-center justify-center p-6 text-white">
+                <Video className="h-12 w-12 mb-4" />
+                <h3 className="text-xl font-medium mb-2">Camera Access Required</h3>
+                <p className="text-center mb-4">This application needs camera access to analyze crowd demographics.</p>
+                <Button 
+                  onClick={requestCameraPermission} 
+                  className="bg-primary hover:bg-primary-dark text-white px-6 py-2"
+                >
+                  Enable Camera
+                </Button>
+                {cameraState.error && (
+                  <p className="mt-3 text-[#DC3545] text-sm">{cameraState.error}</p>
+                )}
               </div>
-            </div>
-          )}
+            )}
+
+            {/* Processing overlay */}
+            {isProcessing && (
+              <div className="absolute inset-0 bg-[#323130] bg-opacity-70 flex items-center justify-center">
+                <div className="text-white text-center">
+                  <div className="animate-spin mb-2 h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
+                  <p>Processing frame...</p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* AWS credentials alert */}
