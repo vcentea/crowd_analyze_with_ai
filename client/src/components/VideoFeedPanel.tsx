@@ -79,10 +79,10 @@ export default function VideoFeedPanel({ settings }: VideoFeedPanelProps) {
           </div>
         </div>
 
-        <div className="relative flex-grow bg-black rounded-md overflow-hidden flex items-center justify-center mb-4">
+        <div className="relative bg-black rounded-md overflow-hidden flex items-center justify-center mb-4" style={{ aspectRatio: '16/9', width: '100%' }}>
           <video 
             ref={videoRef} 
-            className="w-full h-full object-cover" 
+            className="w-full h-full object-contain" 
             autoPlay 
             muted 
             playsInline

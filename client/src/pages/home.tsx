@@ -74,28 +74,31 @@ export default function Home() {
 
       {/* Main Content */}
       <main className="flex-grow container mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Panel: Video Feed and Settings */}
-          <div className="lg:col-span-1">
-            <VideoFeedPanel settings={currentSettings} />
-            
-            {showSettings && (
+        {/* Video Feed - Given full width for better crowd visibility */}
+        <div className="mb-6">
+          <VideoFeedPanel settings={currentSettings} />
+        </div>
+        
+        {/* Analytics Dashboard - Below the video feed */}
+        <div>
+          <AnalyticsDashboard 
+            captures={captures || []} 
+            isLoading={isLoadingCaptures}
+            onViewCaptureDetails={handleViewCaptureDetails}
+          />
+        </div>
+        
+        {/* Settings Panel - Overlaid when visible */}
+        {showSettings && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+            <div className="bg-white rounded-lg shadow-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
               <SettingsPanel 
                 settings={currentSettings} 
                 onClose={toggleSettings} 
               />
-            )}
+            </div>
           </div>
-          
-          {/* Right Panel: Dashboard */}
-          <div className="lg:col-span-2">
-            <AnalyticsDashboard 
-              captures={captures || []} 
-              isLoading={isLoadingCaptures}
-              onViewCaptureDetails={handleViewCaptureDetails}
-            />
-          </div>
-        </div>
+        )}
       </main>
 
       {/* Footer */}

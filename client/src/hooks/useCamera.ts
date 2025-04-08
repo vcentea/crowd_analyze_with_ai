@@ -30,9 +30,10 @@ export default function useCamera(videoRef: React.RefObject<HTMLVideoElement>) {
       
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
-          facingMode: "user",
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          facingMode: "user", 
+          width: { min: 1280, ideal: 1920 },
+          height: { min: 720, ideal: 1080 },
+          aspectRatio: { ideal: 16/9 }
         } 
       });
       
