@@ -243,85 +243,93 @@ function mapBoundingBox(box?: BoundingBox): DetectedFace["boundingBox"] {
  * Calculates statistics from detected faces
  */
 function calculateStatistics(faces: DetectedFace[]): Omit<AnalysisResult, "faces" | "timestamp"> {
-  // Count the total number of people
-  const peopleCount = faces.length;
+  // Default result with null/undefined values
+  const result: Omit<AnalysisResult, "faces" | "timestamp"> = {
+    peopleCount: faces.length,
+    averageAge: undefined,
+    malePercentage: undefined,
+    femalePercentage: undefined,
+    primaryEmotion: undefined,
+    primaryEmotionPercentage: undefined,
+    engagementScore: undefined,
+    attentionTime: undefined
+  };
   
-  // Initialize statistics
-  let totalAge = 0;
-  let ageCount = 0;
-  let maleCount = 0;
-  let femaleCount = 0;
-  
-  // Emotion counting
-  const emotionCounts: Record<string, number> = {};
-  
-  // Process each face
-  faces.forEach(face => {
-    // Calculate age statistics
-    if (face.ageRange) {
-      // Use the middle of the age range
-      const avgAge = (face.ageRange.low + face.ageRange.high) / 2;
-      totalAge += avgAge;
-      ageCount++;
-    }
-    
-    // Calculate gender statistics
-    if (face.gender) {
-      if (face.gender.value === "Male") {
-        maleCount++;
-      } else if (face.gender.value === "Female") {
-        femaleCount++;
-      }
-    }
-    
-    // Calculate emotion statistics
-    if (face.emotions && face.emotions.length > 0) {
-      // Find the emotion with the highest confidence
-      const primaryEmotion = face.emotions.reduce((prev, current) => 
-        (current.confidence > prev.confidence) ? current : prev
-      );
-      
-      const emotion = primaryEmotion.type;
-      emotionCounts[emotion] = (emotionCounts[emotion] || 0) + 1;
-    }
-  });
-  
-  // Calculate average age
-  const averageAge = ageCount > 0 ? totalAge / ageCount : undefined;
-  
-  // Calculate gender percentages
-  const totalGenderCount = maleCount + femaleCount;
-  const malePercentage = totalGenderCount > 0 
-    ? Math.round((maleCount / totalGenderCount) * 100) 
-    : undefined;
-    
-  const femalePercentage = totalGenderCount > 0 
-    ? Math.round((femaleCount / totalGenderCount) * 100)
-    : undefined;
-  
-  // Find the primary emotion
-  let primaryEmotion: string | undefined;
-  let primaryEmotionCount = 0;
-  let primaryEmotionPercentage: number | undefined;
-  
-  Object.entries(emotionCounts).forEach(([emotion, count]) => {
-    if (count > primaryEmotionCount) {
-      primaryEmotion = emotion;
-      primaryEmotionCount = count;
-    }
-  });
-  
-  if (primaryEmotion && peopleCount > 0) {
-    primaryEmotionPercentage = Math.round((primaryEmotionCount / peopleCount) * 100);
+  // If no faces detected, return early with default values
+  if (result.peopleCount === 0) {
+    return result;
   }
   
-  // Calculate a comprehensive engagement score using multiple facial attributes
-  let engagementScore: number | undefined;
-  
-  if (peopleCount > 0) {
-    // Initialize total engagement points and maximum possible points
+  try {
+    // Initialize statistics counters
+    let totalAge = 0;
+    let ageCount = 0;
+    let maleCount = 0;
+    let femaleCount = 0;
+    
+    // Emotion counting
+    const emotionCounts: Record<string, number> = {};
+    
+    // Process each face
+    faces.forEach(face => {
+      // Calculate age statistics
+      if (face.ageRange) {
+        // Use the middle of the age range
+        const avgAge = (face.ageRange.low + face.ageRange.high) / 2;
+        totalAge += avgAge;
+        ageCount++;
+      }
+      
+      // Calculate gender statistics
+      if (face.gender) {
+        if (face.gender.value === "Male") {
+          maleCount++;
+        } else if (face.gender.value === "Female") {
+          femaleCount++;
+        }
+      }
+      
+      // Calculate emotion statistics
+      if (face.emotions && face.emotions.length > 0) {
+        // Find the emotion with the highest confidence
+        const primaryEmotion = face.emotions.reduce((prev, current) => 
+          (current.confidence > prev.confidence) ? current : prev
+        );
+        
+        const emotion = primaryEmotion.type;
+        emotionCounts[emotion] = (emotionCounts[emotion] || 0) + 1;
+      }
+    });
+    
+    // Calculate average age
+    if (ageCount > 0) {
+      result.averageAge = Math.round(totalAge / ageCount);
+    }
+    
+    // Calculate gender percentages
+    const totalGenderCount = maleCount + femaleCount;
+    if (totalGenderCount > 0) {
+      result.malePercentage = Math.round((maleCount / totalGenderCount) * 100);
+      result.femalePercentage = Math.round((femaleCount / totalGenderCount) * 100);
+    }
+    
+    // Find the primary emotion
+    let primaryEmotionCount = 0;
+    
+    Object.entries(emotionCounts).forEach(([emotion, count]) => {
+      if (count > primaryEmotionCount) {
+        result.primaryEmotion = emotion;
+        primaryEmotionCount = count;
+      }
+    });
+    
+    if (result.primaryEmotion && result.peopleCount > 0) {
+      result.primaryEmotionPercentage = Math.round((primaryEmotionCount / result.peopleCount) * 100);
+    }
+    
+    // Initialize engagement calculation variables
     let totalEngagementPoints = 0;
-    let maxPossiblePoints = peopleCount * 4; // 4 dimensions: emotion, eyes, pose, expression
+    let maxPossiblePoints = result.peopleCount * 4; // 4 dimensions: emotion, eyes, pose, expression
     
     // Process each face for engagement metrics
     faces.forEach(face => {
@@ -376,71 +384,54 @@ function calculateStatistics(faces: DetectedFace[]): Omit<AnalysisResult, "faces
       totalEngagementPoints += expressionScore;
     });
     
-    // Calculate final percentage score
-    engagementScore = Math.round((totalEngagementPoints / maxPossiblePoints) * 100);
+    // Calculate final percentage score for engagement
+    result.engagementScore = Math.round((totalEngagementPoints / maxPossiblePoints) * 100);
     
-    // Calculate attention time based on engagement score
-    let attentionTime: number | null = null;
-    
-    try {
-      // Calculate estimated attention time for each face based on engagement factors
-      const faceAttentionTimes: number[] = faces.map(face => {
-        let attentionScore = 0;
-        
-        // Eyes open is critical for attention
-        if (face.eyesOpen?.value) {
-          attentionScore += 2.0;
-        }
-        
-        // Emotional engagement affects attention duration
-        if (face.emotions && face.emotions.length > 0) {
-          const primaryEmotion = face.emotions.reduce((prevEmotion, currentEmotion) => 
-            (currentEmotion.confidence > prevEmotion.confidence) ? currentEmotion : prevEmotion
-          );
-          
-          // Weight by emotion type and confidence
-          const emotionWeight = primaryEmotion.confidence / 100;
-          
-          if (['HAPPY', 'SURPRISED'].includes(primaryEmotion.type)) {
-            attentionScore += 1.5 * emotionWeight;
-          } else if (['CALM'].includes(primaryEmotion.type)) {
-            attentionScore += 1.0 * emotionWeight;
-          }
-        }
-        
-        // Facing camera increases attention
-        if (face.pose) {
-          const yawFactor = Math.max(0, 1 - Math.abs(face.pose.yaw) / 45);
-          attentionScore += yawFactor * 1.5;
-        }
-        
-        // Map score to seconds (0-5 range)
-        const normalizedScore = Math.max(0, Math.min(5, attentionScore));
-        
-        return normalizedScore;
-      });
+    // Calculate attention time
+    const faceAttentionTimes: number[] = faces.map(face => {
+      let attentionScore = 0;
       
-      // Calculate average attention time (if any faces detected)
-      if (faceAttentionTimes.length > 0) {
-        const totalAttention = faceAttentionTimes.reduce((sum, time) => sum + time, 0);
-        attentionTime = Math.round((totalAttention / faceAttentionTimes.length) * 10) / 10; // Round to 1 decimal
+      // Eyes open is critical for attention
+      if (face.eyesOpen?.value) {
+        attentionScore += 2.0;
       }
       
-      console.log(`AWS Rekognition: Engagement score ${engagementScore}%, Attention time ${attentionTime || 0}s`);
-    } catch (error) {
-      console.error("Error calculating attention time:", error);
+      // Emotional engagement affects attention duration
+      if (face.emotions && face.emotions.length > 0) {
+        const primaryEmotion = face.emotions.reduce((prevEmotion, currentEmotion) => 
+          (currentEmotion.confidence > prevEmotion.confidence) ? currentEmotion : prevEmotion
+        );
+        
+        // Weight by emotion type and confidence
+        const emotionWeight = primaryEmotion.confidence / 100;
+        
+        if (['HAPPY', 'SURPRISED'].includes(primaryEmotion.type)) {
+          attentionScore += 1.5 * emotionWeight;
+        } else if (['CALM'].includes(primaryEmotion.type)) {
+          attentionScore += 1.0 * emotionWeight;
+        }
+      }
+      
+      // Facing camera increases attention
+      if (face.pose) {
+        const yawFactor = Math.max(0, 1 - Math.abs(face.pose.yaw) / 45);
+        attentionScore += yawFactor * 1.5;
+      }
+      
+      // Map score to seconds (0-5 range)
+      return Math.max(0, Math.min(5, attentionScore));
+    });
+    
+    // Calculate average attention time
+    if (faceAttentionTimes.length > 0) {
+      const totalAttention = faceAttentionTimes.reduce((sum, time) => sum + time, 0);
+      result.attentionTime = Math.round((totalAttention / faceAttentionTimes.length) * 10) / 10; // Round to 1 decimal
     }
+    
+    console.log(`AWS Rekognition: Engagement score ${result.engagementScore}%, Attention time ${result.attentionTime || 0}s`);
+  } catch (error) {
+    console.error("Error calculating statistics:", error);
   }
   
-  // Return the statistics object with attentionTime included
-  return {
-    peopleCount,
-    averageAge,
-    malePercentage,
-    femalePercentage,
-    primaryEmotion,
-    primaryEmotionPercentage,
-    engagementScore,
-    attentionTime
-  };
+  return result;
 }
