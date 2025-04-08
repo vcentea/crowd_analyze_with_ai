@@ -82,15 +82,11 @@ export default function SummaryCards({
     ? latestCapture.engagementScore - previousCapture.engagementScore
     : undefined;
     
-  const attentionDiff = latestCapture && previousCapture && 
-    latestCapture.attentionTime !== undefined && previousCapture.attentionTime !== undefined
-      ? Math.round((latestCapture.attentionTime - previousCapture.attentionTime) * 10) / 10
-      : undefined;
+  const attentionDiff = undefined;
   
-  // Format attention time in seconds with 1 decimal
+  // Format attention time placeholder
   const formatAttentionTime = () => {
-    if (!latestCapture || latestCapture.attentionTime === undefined) return "0.0s";
-    return `${latestCapture.attentionTime.toFixed(1)}s`;
+    return "0.0s";
   };
   
   return (

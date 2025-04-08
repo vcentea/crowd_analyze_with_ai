@@ -425,7 +425,7 @@ function calculateStatistics(faces: DetectedFace[]): Omit<AnalysisResult, "faces
       attentionTime = Math.round((totalAttention / faceAttentionTimes.length) * 10) / 10; // Round to 1 decimal
     }
     
-    console.log(`AWS Rekognition: Engagement score ${engagementScore}%, Attention time ${attentionTime}s`);
+    console.log(`AWS Rekognition: Engagement score ${engagementScore}%`);
   }
   
   // Return the statistics object
@@ -436,7 +436,6 @@ function calculateStatistics(faces: DetectedFace[]): Omit<AnalysisResult, "faces
     femalePercentage,
     primaryEmotion,
     primaryEmotionPercentage,
-    engagementScore,
-    attentionTime: attentionTime || null
+    engagementScore
   };
 }
