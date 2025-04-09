@@ -52,6 +52,17 @@ export default function VideoFeedPanel({ settings }: VideoFeedPanelProps) {
     }
   }, [lastError]);
 
+  const handleCaptureToggle = () => {
+    if (cameraState.isEnabled) {
+      cameraState.isCapturing ? stopCapture() : startCapture();
+    } else {
+      toast({
+        title: "Camera is not enabled",
+        description: "Please enable the camera to start capturing."
+      });
+    }
+  };
+
   return (
     <Card className="bg-white rounded-lg shadow-md h-full">
       <CardContent className="p-4 flex flex-col h-full">
@@ -69,10 +80,18 @@ export default function VideoFeedPanel({ settings }: VideoFeedPanelProps) {
                 <Button 
                   variant="ghost" 
                   size="icon"
-                  onClick={() => cameraState.isCapturing ? stopCapture() : startCapture()}
+                  onClick={handleCaptureToggle}
                   className="text-primary hover:text-primary-dark p-1"
                 >
                   {cameraState.isCapturing ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={stopCapture}
+                  className="text-primary hover:text-primary-dark p-1 ml-2"
+                >
+                  Stop
                 </Button>
               </>
             )}

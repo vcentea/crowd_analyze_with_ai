@@ -1,6 +1,15 @@
+import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+
+// Log environment variables for debugging (without exposing secrets)
+console.log('Environment:', {
+  AWS_REGION: process.env.AWS_REGION,
+  HAS_AWS_CREDENTIALS: !!(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY),
+  HAS_FACEPP_CREDENTIALS: !!(process.env.FACEPP_API_KEY && process.env.FACEPP_API_SECRET),
+  NODE_ENV: process.env.NODE_ENV
+});
 
 const app = express();
 app.use(express.json({ limit: '50mb' }));
