@@ -12,8 +12,19 @@ export default function useCamera(videoRef: React.RefObject<HTMLVideoElement>) {
     isCapturing: false,
     error: null,
   });
-  
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  
+  // Enumerate video input devices on mount
+  useEffect(() => {
+    navigator.mediaDevices.enumerateDevices()
+      .then(devs => {
+        const videoInputs = devs.filter(d => d.kind === 'videoinput');
+        setDevices(videoInputs as MediaDeviceInfo[]);
+      })
+      .catch(() => {});
+  }, []);
   
   // Clean up the camera stream when component unmounts
   useEffect(() => {
@@ -27,15 +38,17 @@ export default function useCamera(videoRef: React.RefObject<HTMLVideoElement>) {
   const requestCameraPermission = async () => {
     try {
       setCameraState(prev => ({ ...prev, error: null }));
-      
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: "user", 
-          width: { min: 1280, ideal: 1920 },
-          height: { min: 720, ideal: 1080 },
-          aspectRatio: { ideal: 16/9 }
-        } 
-      });
+      const videoConstraints: any = {
+        width: { min: 1280, ideal: 1920 },
+        height: { min: 720, ideal: 1080 },
+        aspectRatio: { ideal: 16/9 }
+      };
+      if (selectedDeviceId) {
+        videoConstraints.deviceId = { exact: selectedDeviceId };
+      } else {
+        videoConstraints.facingMode = 'user';
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints });
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -49,7 +62,7 @@ export default function useCamera(videoRef: React.RefObject<HTMLVideoElement>) {
       }));
       
       return true;
-    } catch (error) {
+    } catch (error: any) {
       let errorMessage = "Failed to access camera";
       
       if (error instanceof Error) {
@@ -75,6 +88,19 @@ export default function useCamera(videoRef: React.RefObject<HTMLVideoElement>) {
     }
   };
   
+  const selectCamera = async (deviceId: string | null) => {
+    // Stop existing stream
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setCameraState({ isEnabled: false, isCapturing: false, error: null });
+    setSelectedDeviceId(deviceId);
+    if (deviceId) {
+      await requestCameraPermission();
+    }
+  };
+  
   const startCapture = () => {
     if (!cameraState.isEnabled) {
       requestCameraPermission();
@@ -91,6 +117,9 @@ export default function useCamera(videoRef: React.RefObject<HTMLVideoElement>) {
     cameraState,
     requestCameraPermission,
     startCapture,
-    stopCapture
+    stopCapture,
+    devices,
+    selectedDeviceId,
+    selectCamera
   };
 }

@@ -22,7 +22,10 @@ export default function VideoFeedPanel({ settings }: VideoFeedPanelProps) {
     cameraState, 
     requestCameraPermission, 
     startCapture, 
-    stopCapture 
+    stopCapture,
+    devices,
+    selectedDeviceId,
+    selectCamera
   } = useCamera(videoRef);
   
   const {
@@ -68,7 +71,20 @@ export default function VideoFeedPanel({ settings }: VideoFeedPanelProps) {
       <CardContent className="p-4 flex flex-col h-full">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-medium">Live Feed</h2>
-          <div className="flex">
+          <div className="flex items-center">
+            {/* Camera Picker */}
+            <select
+              className="mr-4 border rounded px-2 py-1 text-sm"
+              value={selectedDeviceId || ""}
+              onChange={e => selectCamera(e.target.value || null)}
+            >
+              <option value="">None</option>
+              {devices.map(device => (
+                <option key={device.deviceId} value={device.deviceId}>
+                  {device.label || device.deviceId}
+                </option>
+              ))}
+            </select>
             {cameraState.isEnabled && (
               <>
                 {cameraState.isCapturing && (
