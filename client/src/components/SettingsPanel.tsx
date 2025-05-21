@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -9,10 +9,13 @@ import {
   ChevronUp, 
   Download, 
   RefreshCw, 
-  X
+  X,
+  AlertCircle,
+  AlertTriangle,
+  Check
 } from "lucide-react";
-import { SettingsConfig } from "@/lib/types";
-import { useMutation } from "@tanstack/react-query";
+import { SettingsConfig, ApiUsageData } from "@/lib/types";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -25,6 +28,12 @@ export default function SettingsPanel({ settings, onClose }: SettingsPanelProps)
   const [collapsed, setCollapsed] = useState(false);
   const [localSettings, setLocalSettings] = useState<SettingsConfig>(settings);
   const { toast } = useToast();
+
+  // Fetch API usage data
+  const { data: apiUsage, isLoading: isLoadingUsage } = useQuery<ApiUsageData>({
+    queryKey: ["/api/usage"],
+    refetchInterval: 60000, // Refresh every minute
+  });
 
   const updateSettings = useMutation({
     mutationFn: async (updatedSettings: SettingsConfig) => {
@@ -106,6 +115,21 @@ export default function SettingsPanel({ settings, onClose }: SettingsPanelProps)
     }
   };
 
+  // Format date string
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  // Calculate usage percentage
+  const calculateUsagePercentage = (count: number, limit: number) => {
+    return Math.min(Math.round((count / limit) * 100), 100);
+  };
+
+  // Determine AWS usage limit
+  const awsLimit = 1000; // Default value
+  const faceppLimit = 30000; // Default value
+  const faceppRateLimit = 20; // Default rate limit per minute
+
   return (
     <Card className="bg-white rounded-lg shadow-md mt-6">
       <CardContent className="p-4">
@@ -151,6 +175,24 @@ export default function SettingsPanel({ settings, onClose }: SettingsPanelProps)
                 />
               </div>
               
+              <div className="mb-3">
+                <div className="flex justify-between mb-1">
+                  <Label htmlFor="auto-stop-timeout">Auto-stop Timeout</Label>
+                  <span className="font-mono">{localSettings.autoStopTimeoutMinutes || 1} min</span>
+                </div>
+                <Slider
+                  id="auto-stop-timeout"
+                  min={1}
+                  max={10}
+                  step={1}
+                  value={[localSettings.autoStopTimeoutMinutes || 1]}
+                  onValueChange={(values) => handleSettingChange("autoStopTimeoutMinutes", values[0])}
+                />
+                <div className="text-xs text-gray-500 mt-1">
+                  Capture will automatically stop after this time to save API usage.
+                </div>
+              </div>
+              
               <div className="flex items-center justify-between mb-3">
                 <Label htmlFor="auto-capture" className="cursor-pointer">Automatic capture</Label>
                 <Switch
@@ -175,9 +217,15 @@ export default function SettingsPanel({ settings, onClose }: SettingsPanelProps)
                       checked={localSettings.apiProvider === 'aws'}
                       onChange={() => handleSettingChange("apiProvider", 'aws')}
                       className="h-4 w-4 text-primary"
+                      disabled={apiUsage?.aws.reachedLimit}
                     />
-                    <Label htmlFor="aws-provider" className="cursor-pointer font-medium">
+                    <Label htmlFor="aws-provider" className={`cursor-pointer font-medium ${apiUsage?.aws.reachedLimit ? 'text-gray-400' : ''}`}>
                       Amazon Rekognition
+                      {apiUsage?.aws.reachedLimit && (
+                        <span className="ml-2 text-xs text-red-500 font-normal">
+                          (Limit Reached)
+                        </span>
+                      )}
                     </Label>
                   </div>
                   <div className="ml-7 text-xs text-gray-500">
@@ -195,9 +243,15 @@ export default function SettingsPanel({ settings, onClose }: SettingsPanelProps)
                       checked={localSettings.apiProvider === 'facepp'}
                       onChange={() => handleSettingChange("apiProvider", 'facepp')}
                       className="h-4 w-4 text-primary"
+                      disabled={apiUsage?.facepp.reachedLimit}
                     />
-                    <Label htmlFor="facepp-provider" className="cursor-pointer font-medium">
+                    <Label htmlFor="facepp-provider" className={`cursor-pointer font-medium ${apiUsage?.facepp.reachedLimit ? 'text-gray-400' : ''}`}>
                       Face++ API
+                      {apiUsage?.facepp.reachedLimit && (
+                        <span className="ml-2 text-xs text-red-500 font-normal">
+                          (Limit Reached)
+                        </span>
+                      )}
                     </Label>
                   </div>
                   <div className="ml-7 text-xs text-gray-500">
@@ -205,6 +259,87 @@ export default function SettingsPanel({ settings, onClose }: SettingsPanelProps)
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* API Usage Stats */}
+            <div className="mb-4">
+              <h3 className="font-medium mb-2">API Usage Statistics</h3>
+              {isLoadingUsage ? (
+                <div className="text-center p-4 text-gray-500">Loading usage data...</div>
+              ) : (
+                <>
+                  {/* AWS Usage */}
+                  <div className="p-3 border rounded-md mb-3">
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="text-sm font-medium">AWS Rekognition</h4>
+                      <div className="flex items-center">
+                        {apiUsage?.aws.reachedLimit ? (
+                          <AlertCircle className="w-4 h-4 text-red-500 mr-1" />
+                        ) : apiUsage && calculateUsagePercentage(apiUsage.aws.count, awsLimit) > 80 ? (
+                          <AlertTriangle className="w-4 h-4 text-amber-500 mr-1" />
+                        ) : (
+                          <Check className="w-4 h-4 text-green-500 mr-1" />
+                        )}
+                        <span className="text-xs">
+                          {apiUsage?.aws.count || 0} / {awsLimit}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full ${
+                          apiUsage?.aws.reachedLimit ? 'bg-red-500' :
+                          apiUsage && calculateUsagePercentage(apiUsage.aws.count, awsLimit) > 80 ? 'bg-amber-500' : 'bg-green-500'
+                        }`}
+                        style={{ width: `${apiUsage ? calculateUsagePercentage(apiUsage.aws.count, awsLimit) : 0}%` }}
+                      />
+                    </div>
+                    <div className="mt-2 text-xs text-gray-500">
+                      <div className="flex justify-between">
+                        <span>Start Date: {apiUsage ? formatDate(apiUsage.aws.startDate) : 'N/A'}</span>
+                        <span>Reset Date: {apiUsage ? formatDate(apiUsage.aws.resetDate) : 'N/A'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Face++ Usage */}
+                  <div className="p-3 border rounded-md">
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="text-sm font-medium">Face++ API</h4>
+                      <div className="flex items-center">
+                        {apiUsage?.facepp.reachedLimit ? (
+                          <AlertCircle className="w-4 h-4 text-red-500 mr-1" />
+                        ) : apiUsage && calculateUsagePercentage(apiUsage.facepp.count, faceppLimit) > 80 ? (
+                          <AlertTriangle className="w-4 h-4 text-amber-500 mr-1" />
+                        ) : (
+                          <Check className="w-4 h-4 text-green-500 mr-1" />
+                        )}
+                        <span className="text-xs">
+                          {apiUsage?.facepp.count || 0} / {faceppLimit}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full ${
+                          apiUsage?.facepp.reachedLimit ? 'bg-red-500' :
+                          apiUsage && calculateUsagePercentage(apiUsage.facepp.count, faceppLimit) > 80 ? 'bg-amber-500' : 'bg-green-500'
+                        }`}
+                        style={{ width: `${apiUsage ? calculateUsagePercentage(apiUsage.facepp.count, faceppLimit) : 0}%` }}
+                      />
+                    </div>
+                    <div className="mt-2 text-xs text-gray-500">
+                      <div className="flex justify-between">
+                        <span>Start Date: {apiUsage ? formatDate(apiUsage.facepp.startDate) : 'N/A'}</span>
+                        <span>Reset Date: {apiUsage ? formatDate(apiUsage.facepp.resetDate) : 'N/A'}</span>
+                      </div>
+                      <div className="mt-1 border-t pt-1">
+                        <span>Rate Limit: {apiUsage?.facepp.minuteCount || 0} / {faceppRateLimit} per minute</span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
             
             {/* Analysis Settings */}

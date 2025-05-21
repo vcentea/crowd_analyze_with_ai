@@ -112,6 +112,7 @@ export interface SettingsConfig {
   enableEmotionAnalysis: boolean;
   autoCapture: boolean;
   apiProvider: ApiProvider;
+  autoStopTimeoutMinutes?: number; // Automatic stop timeout in minutes
 }
 
 export interface CameraState {
@@ -128,4 +129,19 @@ export interface MetricCardProps {
   iconBgColor: string;
   iconColor: string;
   changeDirection?: 'up' | 'down';
+}
+
+export interface ApiUsage {
+  provider: ApiProvider;
+  startDate: string;
+  resetDate: string;
+  count: number;
+  reachedLimit: boolean;
+  minuteStartTime?: string; // For rate limiting (Face++)
+  minuteCount?: number; // For rate limiting (Face++)
+}
+
+export interface ApiUsageData {
+  aws: ApiUsage;
+  facepp: ApiUsage;
 }

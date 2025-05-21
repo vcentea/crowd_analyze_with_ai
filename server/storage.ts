@@ -64,13 +64,14 @@ export class MemStorage implements IStorage {
     if (!this.settingsData) {
       this.settingsData = {
         id: 1,
-        frameInterval: 5,
+        frameInterval: 7,
         confidenceThreshold: 80,
         enableAgeAnalysis: true,
         enableGenderAnalysis: true,
         enableEmotionAnalysis: true,
         autoCapture: true,
         apiProvider: "facepp" as const, // Default to Face++ API
+        autoStopTimeoutMinutes: Number(process.env.AUTO_STOP_TIMEOUT_MINUTES) || 1,
       };
     }
     return this.settingsData;

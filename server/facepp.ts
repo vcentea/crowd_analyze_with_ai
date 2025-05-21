@@ -101,6 +101,25 @@ interface FacePlusPlusResponse {
 }
 
 /**
+ * Anonymizes face tokens in the Face++ response
+ * @param response - The Face++ API response
+ * @returns The anonymized response
+ */
+function anonymizeFaceTokens(response: any): any {
+  if (!response || !response.faces || !Array.isArray(response.faces)) {
+    return response;
+  }
+  
+  return {
+    ...response,
+    faces: response.faces.map((face: any) => ({
+      ...face,
+      face_token: "ANONYMIZED" // Replace face token with constant string
+    }))
+  };
+}
+
+/**
  * Analyzes an image using Face++ API
  * @param imageBuffer - The image buffer to analyze
  * @param settings - The analysis settings
@@ -148,14 +167,17 @@ export async function analyzeImage(
 
     console.log(`Face++ API detected ${response.data.faces.length} faces`);
     
+    // Anonymize face tokens in the response
+    const anonymizedResponse = anonymizeFaceTokens(response.data);
+    
     // Process all detected faces thoroughly
-    const detectedFaces = processDetectedFaces(response.data.faces, settings);
+    const detectedFaces = processDetectedFaces(anonymizedResponse.faces, settings);
     
     // Calculate comprehensive statistics
     const stats = calculateStatistics(detectedFaces);
 
     // Store raw response separately to avoid type errors
-    const rawResponse = response.data;
+    const rawResponse = anonymizedResponse;
     
     console.log(`Processing complete: ${detectedFaces.length} faces analyzed`);
     console.log(`Engagement score: ${stats.engagementScore}, Attention time: ${stats.attentionTime}s`);

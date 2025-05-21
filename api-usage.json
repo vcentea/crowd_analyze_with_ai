@@ -1,0 +1,18 @@
+{
+  "aws": {
+    "provider": "aws",
+    "startDate": "2025-05-21T07:10:02.780Z",
+    "resetDate": "2025-05-31T22:00:00.000Z",
+    "count": 0,
+    "reachedLimit": false
+  },
+  "facepp": {
+    "provider": "facepp",
+    "startDate": "2025-05-21T07:10:02.780Z",
+    "resetDate": "2025-05-31T22:00:00.000Z",
+    "count": 36,
+    "reachedLimit": false,
+    "minuteStartTime": "2025-05-21T07:52:30.004Z",
+    "minuteCount": 8
+  }
+}

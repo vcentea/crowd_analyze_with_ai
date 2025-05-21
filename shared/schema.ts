@@ -41,13 +41,14 @@ export type Capture = typeof captures.$inferSelect;
 // Settings schema
 export const settings = pgTable("settings", {
   id: serial("id").primaryKey(),
-  frameInterval: integer("frame_interval").notNull().default(5),
+  frameInterval: integer("frame_interval").notNull().default(7),
   confidenceThreshold: integer("confidence_threshold").notNull().default(80),
   enableAgeAnalysis: boolean("enable_age_analysis").notNull().default(true),
   enableGenderAnalysis: boolean("enable_gender_analysis").notNull().default(true),
   enableEmotionAnalysis: boolean("enable_emotion_analysis").notNull().default(true),
   autoCapture: boolean("auto_capture").notNull().default(true),
   apiProvider: text("api_provider").notNull().default("aws"),
+  autoStopTimeoutMinutes: integer("auto_stop_timeout_minutes").default(1),
 });
 
 export const insertSettingsSchema = createInsertSchema(settings).omit({

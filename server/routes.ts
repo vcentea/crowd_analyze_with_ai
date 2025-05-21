@@ -8,6 +8,7 @@ import { z } from "zod";
 import { ApiProvider } from "../client/src/lib/types";
 import fs from "fs";
 import path from "path";
+import { getUsageData, trackAwsUsage, trackFaceppUsage } from "./usageTracker";
 
 // Validate image data from client
 const analyzeImageSchema = z.object({
@@ -16,6 +17,42 @@ const analyzeImageSchema = z.object({
     .refine((val) => val.length > 0, "Image data cannot be empty")
     .refine((val) => val.includes("base64"), "Image data must be base64 encoded")
 });
+
+/**
+ * Anonymizes sensitive data like face tokens in the capture data
+ * @param captures - The capture data to anonymize
+ * @returns The anonymized capture data
+ */
+function anonymizeCaptureData<T extends { rawData?: any }>(captures: T[]): T[] {
+  return captures.map(capture => {
+    if (!capture.rawData) return capture;
+    
+    const anonymizedCapture = { ...capture };
+    const rawData = { ...anonymizedCapture.rawData };
+    
+    // Anonymize face tokens in the nested rawData.rawData structure (from Face++ API)
+    if (rawData.rawData && rawData.rawData.faces && Array.isArray(rawData.rawData.faces)) {
+      rawData.rawData = {
+        ...rawData.rawData,
+        faces: rawData.rawData.faces.map((face: any) => ({
+          ...face,
+          face_token: face.face_token ? "ANONYMIZED" : undefined
+        }))
+      };
+    }
+    
+    // Anonymize face tokens in the main faces array
+    if (rawData.faces && Array.isArray(rawData.faces)) {
+      rawData.faces = rawData.faces.map((face: any) => {
+        // ID in the main faces array is sometimes the face token from Face++ API
+        return { ...face };
+      });
+    }
+    
+    anonymizedCapture.rawData = rawData;
+    return anonymizedCapture;
+  });
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize settings if they don't exist
@@ -46,6 +83,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // API endpoint to get API usage data
+  app.get("/api/usage", async (_req: Request, res: Response) => {
+    try {
+      const usageData = getUsageData();
+      res.json(usageData);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to retrieve API usage data" });
+    }
+  });
+  
   // API endpoint to analyze an image
   app.post("/api/analyze", async (req: Request, res: Response) => {
     try {
@@ -68,9 +115,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let analysisResult;
       if (apiSettings.apiProvider === 'facepp') {
+        // Check Face++ API usage limits
+        if (!trackFaceppUsage()) {
+          const usageData = getUsageData();
+          return res.status(429).json({ 
+            message: "Face++ API monthly limit reached or rate limit exceeded", 
+            usage: usageData.facepp,
+            resetDate: new Date(usageData.facepp.resetDate).toLocaleDateString()
+          });
+        }
+        
         // Use Face++ API
         analysisResult = await analyzeImageWithFacePP(imageBuffer, apiSettings);
       } else {
+        // Check AWS Rekognition usage limits
+        if (!trackAwsUsage()) {
+          const usageData = getUsageData();
+          return res.status(429).json({ 
+            message: "AWS Rekognition monthly limit reached", 
+            usage: usageData.aws,
+            resetDate: new Date(usageData.aws.resetDate).toLocaleDateString()
+          });
+        }
+        
         // Default to AWS Rekognition
         analysisResult = await analyzeImageWithAWS(imageBuffer, apiSettings);
       }
@@ -105,7 +172,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/captures", async (_req: Request, res: Response) => {
     try {
       const captures = await storage.getAllCaptures();
-      res.json(captures);
+      res.json(anonymizeCaptureData(captures));
     } catch (error) {
       res.status(500).json({ message: "Failed to retrieve captures" });
     }
@@ -119,7 +186,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader("Content-Type", "application/json");
       res.setHeader("Content-Disposition", `attachment; filename=crowd-analytics-data-${new Date().toISOString().slice(0, 10)}.json`);
       
-      res.json(captures);
+      res.json(anonymizeCaptureData(captures));
     } catch (error) {
       res.status(500).json({ message: "Failed to export data" });
     }

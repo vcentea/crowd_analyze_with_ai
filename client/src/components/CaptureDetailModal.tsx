@@ -117,7 +117,41 @@ export default function CaptureDetailModal({
   
   // Download functions
   const downloadRawData = () => {
-    const dataStr = JSON.stringify(capture, null, 2);
+    // Create a deep copy of the capture to avoid modifying the original
+    const captureToDownload = JSON.parse(JSON.stringify(capture));
+    
+    // Anonymize any face tokens that might still be present
+    if (captureToDownload.rawData) {
+      // Handle nested rawData structure from Face++ API
+      if (captureToDownload.rawData.rawData && 
+          captureToDownload.rawData.rawData.faces && 
+          Array.isArray(captureToDownload.rawData.rawData.faces)) {
+        captureToDownload.rawData.rawData.faces = captureToDownload.rawData.rawData.faces.map(face => ({
+          ...face,
+          face_token: face.face_token ? "ANONYMIZED" : undefined
+        }));
+      }
+      
+      // Handle faces array in the main rawData 
+      if (captureToDownload.rawData.faces && Array.isArray(captureToDownload.rawData.faces)) {
+        captureToDownload.rawData.faces = captureToDownload.rawData.faces.map(face => ({
+          ...face,
+          // Anonymize any potential face token used as ID
+          id: face.id && face.id.length > 30 ? "ANONYMIZED" : face.id
+        }));
+      }
+    }
+    
+    // Anonymize main faces array
+    if (captureToDownload.faces && Array.isArray(captureToDownload.faces)) {
+      captureToDownload.faces = captureToDownload.faces.map(face => ({
+        ...face,
+        // Anonymize any potential face token used as ID
+        id: face.id && face.id.length > 30 ? "ANONYMIZED" : face.id
+      }));
+    }
+    
+    const dataStr = JSON.stringify(captureToDownload, null, 2);
     const dataBlob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(dataBlob);
     const a = document.createElement("a");

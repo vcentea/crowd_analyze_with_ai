@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
 export interface CameraState {
   isEnabled: boolean;
@@ -35,7 +35,7 @@ export default function useCamera(videoRef: React.RefObject<HTMLVideoElement>) {
     };
   }, []);
   
-  const requestCameraPermission = async () => {
+  const requestCameraPermission = useCallback(async () => {
     try {
       setCameraState(prev => ({ ...prev, error: null }));
       const videoConstraints: any = {
@@ -86,9 +86,9 @@ export default function useCamera(videoRef: React.RefObject<HTMLVideoElement>) {
       
       return false;
     }
-  };
+  }, [selectedDeviceId, videoRef, setCameraState]); // videoRef and setCameraState are stable
   
-  const selectCamera = async (deviceId: string | null) => {
+  const selectCamera = useCallback(async (deviceId: string | null) => {
     // Stop existing stream
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
@@ -99,19 +99,24 @@ export default function useCamera(videoRef: React.RefObject<HTMLVideoElement>) {
     if (deviceId) {
       await requestCameraPermission();
     }
-  };
+  }, [requestCameraPermission, streamRef, setCameraState, setSelectedDeviceId]); // streamRef, setCameraState, setSelectedDeviceId are stable
   
-  const startCapture = () => {
+  const startCapture = useCallback(() => {
     if (!cameraState.isEnabled) {
-      requestCameraPermission();
+      // Attempt to get permission, then start capture if successful
+      requestCameraPermission().then(success => {
+        if (success) {
+          setCameraState(prev => ({ ...prev, isCapturing: true, isEnabled: true }));
+        }
+      });
+    } else {
+      setCameraState(prev => ({ ...prev, isCapturing: true }));
     }
-    
-    setCameraState(prev => ({ ...prev, isCapturing: true }));
-  };
+  }, [cameraState.isEnabled, requestCameraPermission, setCameraState]);
   
-  const stopCapture = () => {
+  const stopCapture = useCallback(() => {
     setCameraState(prev => ({ ...prev, isCapturing: false }));
-  };
+  }, [setCameraState]);
   
   return {
     cameraState,

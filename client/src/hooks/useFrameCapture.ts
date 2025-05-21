@@ -6,12 +6,13 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function useFrameCapture(
   videoRef: React.RefObject<HTMLVideoElement>,
-  settings: SettingsConfig
+  settings: SettingsConfig,
+  isCapturing: boolean
 ) {
   const [nextCaptureTime, setNextCaptureTime] = useState<number | null>(null);
   const [lastAnalyzedTime, setLastAnalyzedTime] = useState<Date | null>(null);
   const [framesAnalyzed, setFramesAnalyzed] = useState(0);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isProcessingFrame, setIsProcessingFrame] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
   
   const captureIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -45,7 +46,7 @@ export default function useFrameCapture(
   
   // Capture a frame from the video feed
   const captureFrame = async () => {
-    if (!videoRef.current) {
+    if (!videoRef.current || !isCapturing) {
       return;
     }
     
@@ -55,7 +56,7 @@ export default function useFrameCapture(
     }
     
     try {
-      setIsProcessing(true);
+      setIsProcessingFrame(true);
       
       // Create a canvas to capture the frame
       const canvas = document.createElement("canvas");
@@ -95,7 +96,7 @@ export default function useFrameCapture(
         variant: "destructive",
       });
     } finally {
-      setIsProcessing(false);
+      setIsProcessingFrame(false);
     }
   };
   
@@ -110,6 +111,7 @@ export default function useFrameCapture(
     countdownIntervalRef.current = setInterval(() => {
       setNextCaptureTime(prev => {
         if (prev === null || prev <= 1) {
+          if(countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
           return null;
         }
         return prev - 1;
@@ -119,33 +121,8 @@ export default function useFrameCapture(
   
   // Effect to handle auto-capturing based on settings
   useEffect(() => {
-    // Only run if auto-capture is enabled
-    if (settings.autoCapture) {
-      // Clear any existing intervals
-      if (captureIntervalRef.current) {
-        clearInterval(captureIntervalRef.current);
-      }
-      
-      // Start a new capture interval
-      captureIntervalRef.current = setInterval(() => {
-        captureFrame();
-        startCountdown(settings.frameInterval);
-      }, settings.frameInterval * 1000);
-      
-      // Initial countdown
-      startCountdown(settings.frameInterval);
-      
-      // Clean up on unmount or when settings change
-      return () => {
-        if (captureIntervalRef.current) {
-          clearInterval(captureIntervalRef.current);
-        }
-        if (countdownIntervalRef.current) {
-          clearInterval(countdownIntervalRef.current);
-        }
-      };
-    } else {
-      // Clean up intervals if auto-capture is disabled
+    // Function to clear intervals
+    const cleanupIntervals = () => {
       if (captureIntervalRef.current) {
         clearInterval(captureIntervalRef.current);
         captureIntervalRef.current = null;
@@ -155,15 +132,37 @@ export default function useFrameCapture(
         countdownIntervalRef.current = null;
       }
       setNextCaptureTime(null);
+    };
+
+    // Only run if auto-capture is enabled AND isCapturing is true
+    if (settings.autoCapture && isCapturing) {
+      cleanupIntervals(); // Clear previous intervals before starting new ones
+      
+      // Start a new capture interval
+      captureIntervalRef.current = setInterval(() => {
+        if (videoRef.current && videoRef.current.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA) {
+          captureFrame(); // captureFrame already checks for isCapturing
+          startCountdown(settings.frameInterval);
+        }
+      }, settings.frameInterval * 1000);
+      
+      // Initial countdown
+      startCountdown(settings.frameInterval);
+      
+      // Clean up on unmount or when settings/isCapturing change
+      return cleanupIntervals;
+    } else {
+      // Clean up intervals if auto-capture is disabled or isCapturing is false
+      cleanupIntervals();
     }
-  }, [settings.autoCapture, settings.frameInterval]);
+  }, [settings.autoCapture, settings.frameInterval, isCapturing, videoRef]); // Added isCapturing and videoRef to dependencies
   
   return {
     nextCaptureTime,
     lastAnalyzedTime,
     framesAnalyzed,
-    isProcessing,
+    isProcessing: isProcessingFrame, // Use the renamed state variable
     lastError,
-    captureFrame
+    captureFrame // Expose captureFrame if manual capture is needed elsewhere
   };
 }

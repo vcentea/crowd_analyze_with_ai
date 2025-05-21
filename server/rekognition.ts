@@ -55,11 +55,20 @@ export async function analyzeImage(
     // Calculate aggregate statistics
     const stats = calculateStatistics(faces);
     
-    return {
+    // Create anonymized result with rawData for completeness but without any sensitive identifiers
+    const result = {
       ...stats,
       faces,
       timestamp: new Date(),
+      // Store anonymized raw data for debugging purposes
+      rawData: {
+        ...response,
+        // Remove any sensitive AWS data that might be in the response
+        FaceDetails: "REDACTED_FOR_PRIVACY"
+      }
     };
+    
+    return result;
   } catch (error) {
     console.error("Error analyzing image with Rekognition:", error);
     
@@ -118,9 +127,13 @@ function processDetectedFaces(
       return (face.Confidence || 0) >= settings.confidenceThreshold;
     })
     .map(face => {
+      // Generate a random ID instead of using any potential sensitive identifiers
+      // This ensures we don't accidentally store any tracking data from AWS
+      const id = randomUUID();
+      
       // Map Rekognition face details to our DetectedFace format
       const detectedFace: DetectedFace = {
-        id: randomUUID(),
+        id,
         boundingBox: mapBoundingBox(face.BoundingBox),
         confidence: face.Confidence || 0,
       };
