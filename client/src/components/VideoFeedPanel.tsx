@@ -323,8 +323,9 @@ export default function VideoFeedPanel({ settings }: VideoFeedPanelProps) {
               <Button 
                 onClick={requestCameraPermission} 
                 className="bg-primary hover:bg-primary-dark text-white px-6 py-2"
+                disabled={!selectedDeviceId}
               >
-                Enable Camera
+                {selectedDeviceId ? "Enable Camera" : "Select a camera"}
               </Button>
               {cameraState.error && (
                 <p className="mt-3 text-[#DC3545] text-sm">{cameraState.error}</p>
