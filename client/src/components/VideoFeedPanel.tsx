@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Pause, Play, Video, AlertTriangle, RefreshCw, Clock, AlertCircle, Timer } from "lucide-react";
+import { Pause, Play, Video, AlertTriangle, RefreshCw, Clock, AlertCircle, Timer, ChevronUp } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import useCamera from "@/hooks/useCamera";
 import useFrameCapture from "@/hooks/useFrameCapture";
@@ -22,6 +22,7 @@ export default function VideoFeedPanel({ settings }: VideoFeedPanelProps) {
   const [awsError, setAwsError] = useState<string | null>(null);
   const [apiLimitError, setApiLimitError] = useState<{message: string, resetDate: string} | null>(null);
   const [autoStopTimer, setAutoStopTimer] = useState<number | null>(null);
+  const [showCameraSelectorHint, setShowCameraSelectorHint] = useState<boolean>(false);
   const autoStopTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
   
@@ -190,9 +191,33 @@ export default function VideoFeedPanel({ settings }: VideoFeedPanelProps) {
       return;
     }
 
+    // Check if a camera is selected
+    if (!selectedDeviceId) {
+      setShowCameraSelectorHint(true);
+      setTimeout(() => setShowCameraSelectorHint(false), 5000); // Hide hint after 5 seconds
+      toast({
+        title: "No camera selected",
+        description: "Please select a camera first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (cameraState.isEnabled) {
       cameraState.isCapturing ? stopCapture() : startCapture();
     } else {
+      // Check if a camera is selected before trying to enable
+      if (!selectedDeviceId) {
+        setShowCameraSelectorHint(true);
+        setTimeout(() => setShowCameraSelectorHint(false), 5000); // Hide hint after 5 seconds
+        toast({
+          title: "No camera selected",
+          description: "Please select a camera first.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       toast({
         title: "Camera is not enabled",
         description: "Please enable the camera to start capturing."
@@ -213,10 +238,22 @@ export default function VideoFeedPanel({ settings }: VideoFeedPanelProps) {
       <CardContent className="p-4 flex flex-col h-full">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-medium">Live Feed</h2>
-          <div className="flex items-center">
+          <div className="flex items-center relative">
+            {/* Camera selector label */}
+            <div className="mr-2 flex flex-col items-end">
+              <span className="text-sm font-medium">Select Camera:</span>
+              {/* Animation pointing to selector */}
+              {showCameraSelectorHint && (
+                <div className="absolute -bottom-6 right-20 flex items-center animate-pulse">
+                  <ChevronUp className="h-5 w-5 text-amber-500 rotate-90" />
+                  <span className="text-xs text-amber-500 font-medium">Select a camera</span>
+                </div>
+              )}
+            </div>
+            
             {/* Camera Picker */}
             <select
-              className="mr-4 border rounded px-2 py-1 text-sm"
+              className={`mr-4 border rounded px-2 py-1 text-sm ${showCameraSelectorHint ? 'border-amber-500 ring-2 ring-amber-200' : ''}`}
               value={selectedDeviceId || ""}
               onChange={e => selectCamera(e.target.value || null)}
             >
